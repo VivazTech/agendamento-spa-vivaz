@@ -20,49 +20,49 @@ export default async function handler(req: any, res: any) {
 	try {
 		// Endpoint para listar admins
 		if (req.method === 'GET') {
-		try {
-			const supabaseUrl =
-				process.env.SUPABASE_URL ||
-				process.env.VITE_SUPABASE_URL;
-			const supabaseKey =
-				process.env.SUPABASE_SERVICE_ROLE_KEY ||
-				process.env.VITE_SUPABASE_ANON_KEY;
+			try {
+				const supabaseUrl =
+					process.env.SUPABASE_URL ||
+					process.env.VITE_SUPABASE_URL;
+				const supabaseKey =
+					process.env.SUPABASE_SERVICE_ROLE_KEY ||
+					process.env.VITE_SUPABASE_ANON_KEY;
 
-			if (!supabaseUrl || !supabaseKey) {
+				if (!supabaseUrl || !supabaseKey) {
+					return res.status(500).json({
+						ok: false,
+						error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
+					});
+				}
+
+				const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+				const { data: admins, error } = await supabase
+					.from('admins')
+					.select('id, username, name, email, is_active, created_at, updated_at, last_login')
+					.order('name', { ascending: true });
+
+				if (error) {
+					return res.status(500).json({
+						ok: false,
+						error: error.message,
+					});
+				}
+
+				return res.status(200).json({
+					ok: true,
+					admins: admins || [],
+				});
+			} catch (err: any) {
 				return res.status(500).json({
 					ok: false,
-					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
+					error: err?.message || 'Erro inesperado',
 				});
 			}
-
-			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
-
-			const { data: admins, error } = await supabase
-				.from('admins')
-				.select('id, username, name, email, is_active, created_at, updated_at, last_login')
-				.order('name', { ascending: true });
-
-			if (error) {
-				return res.status(500).json({
-					ok: false,
-					error: error.message,
-				});
-			}
-
-			return res.status(200).json({
-				ok: true,
-				admins: admins || [],
-			});
-		} catch (err: any) {
-			return res.status(500).json({
-				ok: false,
-				error: err?.message || 'Erro inesperado',
-			});
 		}
-	}
 
-	if (req.method === 'POST') {
-		try {
+		if (req.method === 'POST') {
+			try {
 			// Parse robusto do body (pode vir como string ou objeto)
 			const raw = req.body ?? {};
 			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
@@ -197,12 +197,12 @@ export default async function handler(req: any, res: any) {
 				error: err?.message || 'Erro inesperado no servidor',
 				details: process.env.NODE_ENV === 'development' ? err?.stack : undefined,
 			});
+			}
 		}
-	}
 
-	// Endpoint para criar ou atualizar admin
-	if (req.method === 'PUT') {
-		try {
+		// Endpoint para criar ou atualizar admin
+		if (req.method === 'PUT') {
+			try {
 			const raw = req.body ?? {};
 			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 			const { id, username, password, name, email, is_active } = (parsed || {}) as {
@@ -325,12 +325,12 @@ export default async function handler(req: any, res: any) {
 				ok: false,
 				error: err?.message || 'Erro inesperado',
 			});
+			}
 		}
-	}
 
-	// Endpoint para deletar/desativar admin
-	if (req.method === 'DELETE') {
-		try {
+		// Endpoint para deletar/desativar admin
+		if (req.method === 'DELETE') {
+			try {
 			const urlObj = new URL(req?.url || '/', 'http://localhost');
 			const id = urlObj.searchParams.get('id');
 
@@ -379,12 +379,12 @@ export default async function handler(req: any, res: any) {
 				ok: false,
 				error: err?.message || 'Erro inesperado',
 			});
+			}
 		}
-	}
 
-	// Endpoint para solicitar reset de senha
-	if (req.method === 'PATCH' && req.body?.action === 'request-reset') {
-		try {
+		// Endpoint para solicitar reset de senha
+		if (req.method === 'PATCH' && req.body?.action === 'request-reset') {
+			try {
 			const { email } = (req.body || {}) as { email?: string };
 
 			if (!email) {
@@ -516,13 +516,13 @@ export default async function handler(req: any, res: any) {
 				ok: false,
 				error: err?.message || 'Erro inesperado',
 			});
+			}
 		}
-	}
 
-	// Endpoint para redefinir senha com token
-	if (req.method === 'PATCH' && req.body?.action === 'reset-password') {
-		try {
-			const { token, newPassword } = (req.body || {}) as {
+		// Endpoint para redefinir senha com token
+		if (req.method === 'PATCH' && req.body?.action === 'reset-password') {
+			try {
+				const { token, newPassword } = (req.body || {}) as {
 				token?: string;
 				newPassword?: string;
 			};
@@ -608,13 +608,13 @@ export default async function handler(req: any, res: any) {
 				ok: true,
 				message: 'Senha redefinida com sucesso',
 			});
-		} catch (err: any) {
-			return res.status(500).json({
-				ok: false,
-				error: err?.message || 'Erro inesperado',
-			});
+			} catch (err: any) {
+				return res.status(500).json({
+					ok: false,
+					error: err?.message || 'Erro inesperado',
+				});
+			}
 		}
-	}
 
 		res.setHeader('Allow', 'GET, POST, PUT, PATCH, DELETE');
 		return res.status(405).json({ ok: false, error: 'Método não permitido' });
