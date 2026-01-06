@@ -10,7 +10,6 @@ interface Admin {
 interface AuthContextType {
   isAuthenticated: boolean;
   admin: Admin | null;
-  login: (username: string, password: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
@@ -41,55 +40,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     setIsLoading(false);
   }, []);
-
-  const login = async (username: string, password: string): Promise<boolean> => {
-    try {
-      console.log('[AuthContext] Attempting login for:', username);
-      
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      console.log('[AuthContext] Response status:', res.status);
-
-      // Tentar parsear como JSON; se vier HTML/texto (erro 500 da plataforma), evitar quebra
-      const contentType = res.headers.get('content-type') || '';
-      let data: any = null;
-      if (contentType.includes('application/json')) {
-        try {
-          data = await res.json();
-        } catch {
-          console.error('[AuthContext] Failed to parse JSON response');
-          return false;
-        }
-      } else {
-        const text = await res.text().catch(() => '');
-        console.error('[AuthContext] Non-JSON response from /api/auth:', {
-          status: res.status,
-          preview: text?.slice(0, 300),
-        });
-        return false;
-      }
-      console.log('[AuthContext] Response data:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
-
-      if (data.ok && data.admin) {
-        setIsAuthenticated(true);
-        setAdmin(data.admin);
-        localStorage.setItem('admin_authenticated', 'true');
-        localStorage.setItem('admin_data', JSON.stringify(data.admin));
-        console.log('[AuthContext] Login successful');
-        return true;
-      }
-      
-      console.log('[AuthContext] Login failed:', data.error || 'Unknown error');
-      return false;
-    } catch (error) {
-      console.error('[AuthContext] Error during login:', error);
-      return false;
-    }
-  };
 
   const loginWithGoogle = async (): Promise<boolean> => {
     try {
@@ -136,7 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, admin, login, loginWithGoogle, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, admin, loginWithGoogle, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
