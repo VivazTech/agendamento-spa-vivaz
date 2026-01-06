@@ -5,9 +5,6 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const crypto = require('crypto');
 
-// Import dinâmico para evitar erros de inicialização
-let sendResetPasswordEmail: any;
-
 // Função para criar hash SHA-256 da senha
 function hashPassword(password: string): string {
 	return crypto.createHash('sha256').update(password).digest('hex');
@@ -20,8 +17,9 @@ function verifyPassword(password: string, hash: string): boolean {
 }
 
 export default async function handler(req: any, res: any) {
-	// Endpoint para listar admins
-	if (req.method === 'GET') {
+	try {
+		// Endpoint para listar admins
+		if (req.method === 'GET') {
 		try {
 			const supabaseUrl =
 				process.env.SUPABASE_URL ||
@@ -478,17 +476,21 @@ export default async function handler(req: any, res: any) {
 			});
 
 			// Import dinâmico para evitar erros de inicialização
-			if (!sendResetPasswordEmail) {
-				const emailModule = await import('./sendEmail');
-				sendResetPasswordEmail = emailModule.sendResetPasswordEmail;
+			let emailResult: { success: boolean; error?: string };
+			try {
+				const { sendResetPasswordEmail } = await import('./sendEmail');
+				emailResult = await sendResetPasswordEmail(
+					admin.email!,
+					resetLink,
+					admin.name
+				);
+			} catch (emailError: any) {
+				console.error('[AUTH] Erro ao importar/enviar email:', emailError);
+				emailResult = { 
+					success: false, 
+					error: emailError?.message || 'Erro ao enviar email' 
+				};
 			}
-
-			// Enviar email com o link de reset
-			const emailResult = await sendResetPasswordEmail(
-				admin.email!,
-				resetLink,
-				admin.name
-			);
 
 			console.log('[AUTH] Resultado do envio de email:', emailResult);
 
@@ -614,7 +616,18 @@ export default async function handler(req: any, res: any) {
 		}
 	}
 
-	res.setHeader('Allow', 'GET, POST, PUT, PATCH, DELETE');
-	return res.status(405).json({ ok: false, error: 'Método não permitido' });
+		res.setHeader('Allow', 'GET, POST, PUT, PATCH, DELETE');
+		return res.status(405).json({ ok: false, error: 'Método não permitido' });
+	} catch (err: any) {
+		console.error('[AUTH] Erro não tratado no handler:', {
+			message: err?.message,
+			stack: err?.stack,
+			name: err?.name,
+		});
+		return res.status(500).json({
+			ok: false,
+			error: err?.message || 'Erro inesperado no servidor',
+		});
+	}
 }
 
