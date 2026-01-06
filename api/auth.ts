@@ -18,6 +18,49 @@ function verifyPassword(password: string, hash: string): boolean {
 }
 
 export default async function handler(req: any, res: any) {
+	// Endpoint para listar admins
+	if (req.method === 'GET') {
+		try {
+			const supabaseUrl =
+				process.env.SUPABASE_URL ||
+				process.env.VITE_SUPABASE_URL;
+			const supabaseKey =
+				process.env.SUPABASE_SERVICE_ROLE_KEY ||
+				process.env.VITE_SUPABASE_ANON_KEY;
+
+			if (!supabaseUrl || !supabaseKey) {
+				return res.status(500).json({
+					ok: false,
+					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
+				});
+			}
+
+			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+			const { data: admins, error } = await supabase
+				.from('admins')
+				.select('id, username, name, email, is_active, created_at, updated_at, last_login')
+				.order('name', { ascending: true });
+
+			if (error) {
+				return res.status(500).json({
+					ok: false,
+					error: error.message,
+				});
+			}
+
+			return res.status(200).json({
+				ok: true,
+				admins: admins || [],
+			});
+		} catch (err: any) {
+			return res.status(500).json({
+				ok: false,
+				error: err?.message || 'Erro inesperado',
+			});
+		}
+	}
+
 	if (req.method === 'POST') {
 		try {
 			// Parse robusto do body (pode vir como string ou objeto)
@@ -131,22 +174,19 @@ export default async function handler(req: any, res: any) {
 		}
 	}
 
-	// Endpoint para criar admin (apenas para setup inicial)
+	// Endpoint para criar ou atualizar admin
 	if (req.method === 'PUT') {
 		try {
-			const { username, password, name, email } = (req.body || {}) as {
+			const raw = req.body ?? {};
+			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
+			const { id, username, password, name, email, is_active } = (parsed || {}) as {
+				id?: string;
 				username?: string;
 				password?: string;
 				name?: string;
 				email?: string;
+				is_active?: boolean;
 			};
-
-			if (!username || !password || !name) {
-				return res.status(400).json({
-					ok: false,
-					error: 'username, password e name são obrigatórios',
-				});
-			}
 
 			const supabaseUrl =
 				process.env.SUPABASE_URL ||
@@ -163,6 +203,55 @@ export default async function handler(req: any, res: any) {
 			}
 
 			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+			// Se tem ID, é atualização
+			if (id) {
+				if (!username || !name) {
+					return res.status(400).json({
+						ok: false,
+						error: 'username e name são obrigatórios para atualização',
+					});
+				}
+
+				const updateData: any = {
+					username,
+					name,
+					email: email || null,
+					is_active: typeof is_active === 'boolean' ? is_active : true,
+				};
+
+				// Se forneceu senha, atualizar também
+				if (password) {
+					updateData.password_hash = hashPassword(password);
+				}
+
+				const { data: updatedAdmin, error: updateError } = await supabase
+					.from('admins')
+					.update(updateData)
+					.eq('id', id)
+					.select('id, username, name, email, is_active')
+					.single();
+
+				if (updateError) {
+					return res.status(500).json({
+						ok: false,
+						error: updateError.message,
+					});
+				}
+
+				return res.status(200).json({
+					ok: true,
+					admin: updatedAdmin,
+				});
+			}
+
+			// Criar novo admin
+			if (!username || !password || !name) {
+				return res.status(400).json({
+					ok: false,
+					error: 'username, password e name são obrigatórios',
+				});
+			}
 
 			// Verificar se username já existe
 			const { data: existing } = await supabase
@@ -191,7 +280,7 @@ export default async function handler(req: any, res: any) {
 					email: email || null,
 					is_active: true,
 				})
-				.select('id, username, name, email')
+				.select('id, username, name, email, is_active')
 				.single();
 
 			if (insertError) {
@@ -204,6 +293,60 @@ export default async function handler(req: any, res: any) {
 			return res.status(201).json({
 				ok: true,
 				admin: newAdmin,
+			});
+		} catch (err: any) {
+			return res.status(500).json({
+				ok: false,
+				error: err?.message || 'Erro inesperado',
+			});
+		}
+	}
+
+	// Endpoint para deletar/desativar admin
+	if (req.method === 'DELETE') {
+		try {
+			const urlObj = new URL(req?.url || '/', 'http://localhost');
+			const id = urlObj.searchParams.get('id');
+
+			if (!id) {
+				return res.status(400).json({
+					ok: false,
+					error: 'id é obrigatório',
+				});
+			}
+
+			const supabaseUrl =
+				process.env.SUPABASE_URL ||
+				process.env.VITE_SUPABASE_URL;
+			const supabaseKey =
+				process.env.SUPABASE_SERVICE_ROLE_KEY ||
+				process.env.VITE_SUPABASE_ANON_KEY;
+
+			if (!supabaseUrl || !supabaseKey) {
+				return res.status(500).json({
+					ok: false,
+					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
+				});
+			}
+
+			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+			// Desativar ao invés de deletar (mais seguro)
+			const { error } = await supabase
+				.from('admins')
+				.update({ is_active: false })
+				.eq('id', id);
+
+			if (error) {
+				return res.status(500).json({
+					ok: false,
+					error: error.message,
+				});
+			}
+
+			return res.status(200).json({
+				ok: true,
+				message: 'Admin desativado com sucesso',
 			});
 		} catch (err: any) {
 			return res.status(500).json({
@@ -437,7 +580,7 @@ export default async function handler(req: any, res: any) {
 		}
 	}
 
-	res.setHeader('Allow', 'POST, PUT, PATCH');
+	res.setHeader('Allow', 'GET, POST, PUT, PATCH, DELETE');
 	return res.status(405).json({ ok: false, error: 'Método não permitido' });
 }
 
