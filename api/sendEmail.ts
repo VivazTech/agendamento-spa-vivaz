@@ -110,7 +110,7 @@ async function sendViaResend(
 		}
 
 		console.log('[SENDEMAIL] Email enviado com sucesso! ID:', responseData.id);
-		return { success: true, emailId: responseData.id };
+		return { success: true };
 	} catch (error: any) {
 		console.error('[SENDEMAIL] Erro ao enviar email:', error);
 		return { success: false, error: error?.message || 'Erro ao enviar email via Resend' };

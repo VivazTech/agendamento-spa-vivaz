@@ -1,10 +1,12 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { sendResetPasswordEmail } from './sendEmail';
 
 // Usar crypto do Node.js (disponível no Vercel)
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const crypto = require('crypto');
+
+// Import dinâmico para evitar erros de inicialização
+let sendResetPasswordEmail: any;
 
 // Função para criar hash SHA-256 da senha
 function hashPassword(password: string): string {
@@ -93,12 +95,18 @@ export default async function handler(req: any, res: any) {
 				console.error('[AUTH] Supabase credentials missing:', {
 					hasUrl: !!supabaseUrl,
 					hasKey: !!supabaseKey,
-					keyPrefix: supabaseKey ? supabaseKey.substring(0, 10) + '...' : 'N/A'
+					hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+					hasAnonKey: !!process.env.VITE_SUPABASE_ANON_KEY,
 				});
 				return res.status(500).json({
 					ok: false,
 					error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
 				});
+			}
+
+			// Avisar se está usando anon key ao invés de service role
+			if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.VITE_SUPABASE_ANON_KEY) {
+				console.warn('[AUTH] Usando VITE_SUPABASE_ANON_KEY. Configure SUPABASE_SERVICE_ROLE_KEY para melhor segurança e permissões.');
 			}
 
 			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
@@ -112,7 +120,22 @@ export default async function handler(req: any, res: any) {
 				.single();
 
 			if (findError) {
-				console.log('[AUTH] Error finding admin:', findError.message);
+				console.error('[AUTH] Error finding admin:', {
+					message: findError.message,
+					code: findError.code,
+					details: findError.details,
+					hint: findError.hint,
+				});
+				
+				// Se for erro de permissão (RLS), dar mensagem mais clara
+				if (findError.code === 'PGRST301' || findError.message?.includes('permission') || findError.message?.includes('RLS')) {
+					return res.status(500).json({
+						ok: false,
+						error: 'Erro de permissão. Configure SUPABASE_SERVICE_ROLE_KEY no Vercel.',
+						details: 'A chave anon não tem permissão para acessar a tabela admins. Use a service_role key.',
+					});
+				}
+				
 				return res.status(401).json({
 					ok: false,
 					error: 'Credenciais inválidas',
@@ -166,10 +189,15 @@ export default async function handler(req: any, res: any) {
 				},
 			});
 		} catch (err: any) {
-			console.error('[AUTH] Unexpected error:', err);
+			console.error('[AUTH] Unexpected error:', {
+				message: err?.message,
+				stack: err?.stack,
+				name: err?.name,
+			});
 			return res.status(500).json({
 				ok: false,
-				error: err?.message || 'Erro inesperado',
+				error: err?.message || 'Erro inesperado no servidor',
+				details: process.env.NODE_ENV === 'development' ? err?.stack : undefined,
 			});
 		}
 	}
@@ -448,6 +476,12 @@ export default async function handler(req: any, res: any) {
 				hasApiKey: !!process.env.RESEND_API_KEY,
 				resetLink,
 			});
+
+			// Import dinâmico para evitar erros de inicialização
+			if (!sendResetPasswordEmail) {
+				const emailModule = await import('./sendEmail');
+				sendResetPasswordEmail = emailModule.sendResetPasswordEmail;
+			}
 
 			// Enviar email com o link de reset
 			const emailResult = await sendResetPasswordEmail(
