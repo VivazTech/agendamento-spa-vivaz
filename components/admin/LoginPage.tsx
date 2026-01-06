@@ -16,10 +16,11 @@ const LoginPage: React.FC = () => {
       if (ok) {
         navigate('/admin');
       } else {
-        setError('Não foi possível entrar com Google. Verifique se o email é autorizado.');
+        setError('Não foi possível entrar com Google. Verifique se o email é autorizado ou se o popup não foi bloqueado.');
       }
-    } catch (err) {
-      setError('Erro ao fazer login. Tente novamente.');
+    } catch (err: any) {
+      console.error('[LoginPage] Error:', err);
+      setError(err?.message || 'Erro ao fazer login. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -36,6 +37,11 @@ const LoginPage: React.FC = () => {
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             {error}
+            {error.includes('bloqueado') && (
+              <div className="mt-2 text-xs">
+                <p>Dica: Permita popups para este site nas configurações do navegador.</p>
+              </div>
+            )}
           </div>
         )}
 

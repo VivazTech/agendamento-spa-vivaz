@@ -45,13 +45,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('[AuthContext] Attempting Google login');
       const { signInWithGoogleAndGetIdToken } = await import('../src/lib/firebaseClient');
-      const { idToken } = await signInWithGoogleAndGetIdToken();
+      
+      let idToken: string;
+      try {
+        const result = await signInWithGoogleAndGetIdToken();
+        idToken = result.idToken;
+        console.log('[AuthContext] Firebase authentication successful, idToken obtained');
+      } catch (firebaseError: any) {
+        console.error('[AuthContext] Firebase authentication error:', {
+          code: firebaseError?.code,
+          message: firebaseError?.message,
+        });
+        
+        // Erros comuns do Firebase
+        if (firebaseError?.code === 'auth/popup-closed-by-user') {
+          console.log('[AuthContext] Popup fechado pelo usuário');
+          return false; // Não é um erro, apenas o usuário fechou
+        }
+        if (firebaseError?.code === 'auth/popup-blocked') {
+          console.error('[AuthContext] Popup bloqueado pelo navegador');
+          throw new Error('Popup bloqueado. Por favor, permita popups para este site.');
+        }
+        if (firebaseError?.code === 'auth/cancelled-popup-request') {
+          console.log('[AuthContext] Popup cancelado');
+          return false;
+        }
+        
+        throw firebaseError;
+      }
 
+      console.log('[AuthContext] Sending idToken to backend...');
       const res = await fetch('/api/auth-firebase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
+
+      console.log('[AuthContext] Backend response status:', res.status);
 
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
@@ -61,6 +91,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const data = await res.json();
+      console.log('[AuthContext] Backend response data:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
+      
       if (data.ok && data.admin) {
         setIsAuthenticated(true);
         setAdmin(data.admin);
@@ -72,8 +104,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('[AuthContext] Google login failed:', data.error || 'Unknown error');
       return false;
-    } catch (error) {
-      console.error('[AuthContext] Error during Google login:', error);
+    } catch (error: any) {
+      console.error('[AuthContext] Error during Google login:', {
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack,
+      });
+      
+      // Re-throw se for um erro de popup bloqueado para mostrar mensagem ao usuário
+      if (error?.message?.includes('bloqueado')) {
+        throw error;
+      }
+      
       return false;
     }
   };

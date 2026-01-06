@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, UserCredential } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, UserCredential } from 'firebase/auth';
 
 const firebaseConfig = {
 	apiKey: "AIzaSyDSZoGmC0YHGIorbIM54DCzd2EKzpIvd1w",
@@ -16,9 +16,40 @@ const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
 export async function signInWithGoogleAndGetIdToken(): Promise<{ idToken: string; cred: UserCredential }> {
-	const cred = await signInWithPopup(auth, provider);
-	const idToken = await cred.user.getIdToken();
-	return { idToken, cred };
+	try {
+		console.log('[FirebaseClient] Verificando redirect result...');
+		// Verificar se há resultado de redirect pendente
+		const redirectResult = await getRedirectResult(auth);
+		if (redirectResult) {
+			console.log('[FirebaseClient] Redirect result encontrado');
+			const idToken = await redirectResult.user.getIdToken();
+			return { idToken, cred: redirectResult };
+		}
+
+		console.log('[FirebaseClient] Iniciando signInWithPopup...');
+		const cred = await signInWithPopup(auth, provider);
+		console.log('[FirebaseClient] Popup concluído, obtendo idToken...');
+		const idToken = await cred.user.getIdToken();
+		console.log('[FirebaseClient] idToken obtido com sucesso');
+		return { idToken, cred };
+	} catch (error: any) {
+		console.error('[FirebaseClient] Erro no signInWithPopup:', {
+			code: error?.code,
+			message: error?.message,
+			email: error?.email,
+			credential: error?.credential,
+		});
+		
+		// Se o popup foi bloqueado ou fechado, tentar redirect
+		if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
+			console.log('[FirebaseClient] Popup bloqueado/fechado, tentando redirect...');
+			await signInWithRedirect(auth, provider);
+			// O redirect vai redirecionar a página, então não retornamos nada aqui
+			throw new Error('Redirecionando para autenticação...');
+		}
+		
+		throw error;
+	}
 }
 
 export { app, auth };
