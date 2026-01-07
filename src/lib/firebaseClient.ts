@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, UserCredential } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, UserCredential } from 'firebase/auth';
 
 const firebaseConfig = {
 	apiKey: "AIzaSyDSZoGmC0YHGIorbIM54DCzd2EKzpIvd1w",
@@ -22,11 +22,26 @@ provider.setCustomParameters({ prompt: 'select_account' });
 export async function checkRedirectResult(): Promise<{ idToken: string; cred: UserCredential } | null> {
 	try {
 		console.log('[FirebaseClient] Verificando redirect result...');
+		console.log('[FirebaseClient] URL atual:', window.location.href);
+		console.log('[FirebaseClient] Auth instance:', auth);
+		console.log('[FirebaseClient] Auth currentUser:', auth.currentUser);
+		
+		// Verificar se há parâmetros na URL que indicam redirect
+		const urlParams = new URLSearchParams(window.location.search);
+		const hasAuthParams = urlParams.has('apiKey') || window.location.hash.includes('auth');
+		console.log('[FirebaseClient] URL tem parâmetros de auth?', hasAuthParams);
+		
 		const redirectResult = await getRedirectResult(auth);
+		console.log('[FirebaseClient] getRedirectResult retornou:', redirectResult ? 'resultado encontrado' : 'null');
+		
 		if (redirectResult) {
-			console.log('[FirebaseClient] Redirect result encontrado, obtendo idToken...');
+			console.log('[FirebaseClient] Redirect result encontrado!', {
+				user: redirectResult.user.email,
+				uid: redirectResult.user.uid,
+			});
+			console.log('[FirebaseClient] Obtendo idToken...');
 			const idToken = await redirectResult.user.getIdToken();
-			console.log('[FirebaseClient] idToken obtido com sucesso');
+			console.log('[FirebaseClient] idToken obtido com sucesso, tamanho:', idToken.length);
 			return { idToken, cred: redirectResult };
 		}
 		console.log('[FirebaseClient] Nenhum redirect result encontrado');
@@ -35,6 +50,7 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 		console.error('[FirebaseClient] Erro ao verificar redirect result:', {
 			code: error?.code,
 			message: error?.message,
+			stack: error?.stack,
 		});
 		return null;
 	}
@@ -47,15 +63,32 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 export async function signInWithGoogleRedirect(): Promise<void> {
 	try {
 		console.log('[FirebaseClient] Iniciando signInWithRedirect...');
+		console.log('[FirebaseClient] URL atual antes do redirect:', window.location.href);
+		console.log('[FirebaseClient] Auth instance:', auth);
+		console.log('[FirebaseClient] Provider:', provider);
+		
 		await signInWithRedirect(auth, provider);
 		// A página será redirecionada, então não retornamos nada
+		console.log('[FirebaseClient] signInWithRedirect chamado, aguardando redirect...');
 	} catch (error: any) {
 		console.error('[FirebaseClient] Erro no signInWithRedirect:', {
 			code: error?.code,
 			message: error?.message,
+			stack: error?.stack,
 		});
 		throw error;
 	}
+}
+
+/**
+ * Observa mudanças no estado de autenticação do Firebase
+ * Útil para detectar quando o usuário faz login via redirect
+ */
+export function onAuthStateChange(callback: (user: any) => void): () => void {
+	return onAuthStateChanged(auth, (user) => {
+		console.log('[FirebaseClient] Auth state changed:', user ? `User: ${user.email}` : 'No user');
+		callback(user);
+	});
 }
 
 export { app, auth };

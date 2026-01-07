@@ -30,58 +30,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       
       try {
-        const { checkRedirectResult } = await import('../src/lib/firebaseClient');
+        const { checkRedirectResult, onAuthStateChange } = await import('../src/lib/firebaseClient');
+        
+        // Primeiro, verificar redirect result
         const redirectResult = await checkRedirectResult();
         
         if (redirectResult) {
           // Se há resultado de redirect, processar login
           console.log('[AuthContext] Processando redirect result...');
-          const res = await fetch('/api/auth-firebase', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken: redirectResult.idToken }),
-          });
-
-          const contentType = res.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            const data = await res.json();
-            console.log('[AuthContext] Resposta do backend:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
-            
-            if (data.ok && data.admin) {
-              setIsAuthenticated(true);
-              setAdmin(data.admin);
-              localStorage.setItem('admin_authenticated', 'true');
-              localStorage.setItem('admin_data', JSON.stringify(data.admin));
-              console.log('[AuthContext] Login via redirect successful');
-              hasProcessedRedirect.current = true;
-              
-              // Aguardar um pouco para garantir que o estado foi atualizado
-              await new Promise(resolve => setTimeout(resolve, 100));
-              
-              // Redirecionar para /admin após login bem-sucedido
-              const currentPath = window.location.pathname;
-              console.log('[AuthContext] Path atual:', currentPath);
-              
-              if (currentPath !== '/admin') {
-                console.log('[AuthContext] Redirecionando para /admin após login bem-sucedido');
-                window.location.replace('/admin');
-                return; // Não definir isLoading = false aqui, pois a página será redirecionada
-              } else {
-                console.log('[AuthContext] Já estamos em /admin, não precisa redirecionar');
-              }
-              
-              setIsLoading(false);
-              return;
-            } else {
-              console.error('[AuthContext] Login falhou:', data.error);
-              // Se o login falhou, continuar para verificar localStorage
-            }
-          } else {
-            console.error('[AuthContext] Resposta não é JSON');
-          }
-        } else {
-          console.log('[AuthContext] Nenhum redirect result encontrado');
+          await processLogin(redirectResult.idToken);
+          return;
         }
+        
+        // Se não há redirect result, verificar se há usuário autenticado no Firebase
+        // (pode ter sido autenticado em outra aba ou sessão anterior)
+        onAuthStateChange(async (firebaseUser) => {
+          if (firebaseUser && !hasProcessedRedirect.current) {
+            console.log('[AuthContext] Usuário autenticado no Firebase detectado via onAuthStateChange');
+            try {
+              const idToken = await firebaseUser.getIdToken();
+              await processLogin(idToken);
+            } catch (error) {
+              console.error('[AuthContext] Erro ao obter idToken do Firebase user:', error);
+            }
+          }
+        });
+        
       } catch (error) {
         console.error('[AuthContext] Erro ao verificar redirect:', error);
       }
@@ -101,6 +75,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           localStorage.removeItem('admin_authenticated');
           localStorage.removeItem('admin_data');
         }
+      }
+      
+      setIsLoading(false);
+    };
+
+    // Função auxiliar para processar login
+    const processLogin = async (idToken: string) => {
+      try {
+        const res = await fetch('/api/auth-firebase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          console.log('[AuthContext] Resposta do backend:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
+          
+          if (data.ok && data.admin) {
+            setIsAuthenticated(true);
+            setAdmin(data.admin);
+            localStorage.setItem('admin_authenticated', 'true');
+            localStorage.setItem('admin_data', JSON.stringify(data.admin));
+            console.log('[AuthContext] Login via redirect successful');
+            hasProcessedRedirect.current = true;
+            
+            // Aguardar um pouco para garantir que o estado foi atualizado
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Redirecionar para /admin após login bem-sucedido
+            const currentPath = window.location.pathname;
+            console.log('[AuthContext] Path atual:', currentPath);
+            
+            if (currentPath !== '/admin') {
+              console.log('[AuthContext] Redirecionando para /admin após login bem-sucedido');
+              window.location.replace('/admin');
+              return; // Não definir isLoading = false aqui, pois a página será redirecionada
+            } else {
+              console.log('[AuthContext] Já estamos em /admin, não precisa redirecionar');
+            }
+            
+            setIsLoading(false);
+            return;
+          } else {
+            console.error('[AuthContext] Login falhou:', data.error);
+          }
+        } else {
+          console.error('[AuthContext] Resposta não é JSON');
+        }
+      } catch (error) {
+        console.error('[AuthContext] Erro ao processar login:', error);
       }
       
       setIsLoading(false);
