@@ -196,7 +196,7 @@ const ScheduleView: React.FC = () => {
       {/* Dia */}
       {selected && !loading && view === 'day' && (
         <div className="mb-6">
-          <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300"
+          <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
             {currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
           </h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -303,7 +303,7 @@ const ScheduleView: React.FC = () => {
 
       {selected && !loading && view === 'month' && monthSelectedDate && (
         <div className="mt-6 mb-6">
-          <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300"
+          <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
             {monthSelectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
           </h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
