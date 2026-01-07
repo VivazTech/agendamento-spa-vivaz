@@ -23,6 +23,7 @@ export default async function handler(req: any, res: any) {
           duration_minutes,
           description,
           responsible_professional_id,
+          category,
           professionals:responsible_professional_id ( id, name )
         `)
 				.order('name', { ascending: true });
@@ -35,6 +36,7 @@ export default async function handler(req: any, res: any) {
 				description: r.description || '',
 				responsibleProfessionalId: r.responsible_professional_id,
 				responsibleProfessionalName: r.professionals?.name || null,
+				category: r.category ? Number(r.category) : null,
 			}));
 			return res.status(200).json({ ok: true, services });
 		}
@@ -42,11 +44,11 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'POST') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { name, price, duration, description, responsibleProfessionalId } = body as {
-				name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null;
+			const { name, price, duration, description, responsibleProfessionalId, category } = body as {
+				name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null; category?: number | null;
 			};
-			if (!name || !price || !duration) {
-				return res.status(400).json({ ok: false, error: 'name, price e duration são obrigatórios' });
+			if (!name || !price || !duration || !category) {
+				return res.status(400).json({ ok: false, error: 'name, price, duration e category são obrigatórios' });
 			}
 			const { data, error } = await supabase
 				.from('services')
@@ -56,6 +58,7 @@ export default async function handler(req: any, res: any) {
 					duration_minutes: duration,
 					description: description || '',
 					responsible_professional_id: responsibleProfessionalId ?? null,
+					category: category,
 				})
 				.select('id')
 				.single();
@@ -66,11 +69,11 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'PUT') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { id, name, price, duration, description, responsibleProfessionalId } = body as {
-				id?: number; name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null;
+			const { id, name, price, duration, description, responsibleProfessionalId, category } = body as {
+				id?: number; name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null; category?: number | null;
 			};
-			if (!id || !name || !price || !duration) {
-				return res.status(400).json({ ok: false, error: 'id, name, price e duration são obrigatórios' });
+			if (!id || !name || !price || !duration || !category) {
+				return res.status(400).json({ ok: false, error: 'id, name, price, duration e category são obrigatórios' });
 			}
 			const { error } = await supabase
 				.from('services')
@@ -80,6 +83,7 @@ export default async function handler(req: any, res: any) {
 					duration_minutes: duration,
 					description: description || '',
 					responsible_professional_id: responsibleProfessionalId ?? null,
+					category: category,
 				})
 				.eq('id', id);
 			if (error) return res.status(500).json({ ok: false, error: error.message });

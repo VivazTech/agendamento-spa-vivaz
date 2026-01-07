@@ -15,16 +15,26 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     duration: 0,
     responsibleProfessionalId: null,
     responsibleProfessionalName: null,
+    category: null,
   });
+
+  const [categories, setCategories] = useState<Array<{ id: number; name: string; icon: string | null }>>([]);
   const [professionals, setProfessionals] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/professionals');
-        const data = await res.json();
-        if (res.ok) {
-          setProfessionals((data.professionals || []).map((p: any) => ({ id: p.id, name: p.name })));
+        const [catRes, proRes] = await Promise.all([
+          fetch('/api/categories'),
+          fetch('/api/professionals')
+        ]);
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          setCategories((catData.categories || []).map((c: any) => ({ id: c.id, name: c.name, icon: c.icon })));
+        }
+        if (proRes.ok) {
+          const proData = await proRes.json();
+          setProfessionals((proData.professionals || []).map((p: any) => ({ id: p.id, name: p.name })));
         }
       } catch {}
     })();
@@ -39,6 +49,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
         duration: service.duration,
         responsibleProfessionalId: service.responsibleProfessionalId ?? null,
         responsibleProfessionalName: service.responsibleProfessionalName ?? null,
+        category: service.category ?? null,
       });
     }
   }, [service]);
@@ -55,8 +66,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Basic validation
-    if (!formData.name || formData.price <= 0 || formData.duration <= 0) {
-        alert("Por favor, preencha todos os campos corretamente.");
+    if (!formData.name || formData.price <= 0 || formData.duration <= 0 || !formData.category) {
+        alert("Por favor, preencha todos os campos obrigatórios, incluindo a categoria.");
         return;
     }
     onSave({
@@ -93,6 +104,25 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
                 <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-1">Preço (R$)</label>
                 <input type="number" id="price" name="price" value={formData.price} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]" required min="0.01" step="0.01" />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Categoria <span className="text-red-500">*</span></label>
+            <select
+              value={formData.category ?? ''}
+              onChange={(e) => {
+                const category = e.target.value ? Number(e.target.value) : null;
+                setFormData(prev => ({ ...prev, category }));
+              }}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
+              required
+            >
+              <option value="">Selecione uma categoria</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.icon ? `${cat.icon} ` : ''}{cat.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Profissional responsável</label>

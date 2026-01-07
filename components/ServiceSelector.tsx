@@ -1,15 +1,14 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Service } from '../types';
-import { CheckCircleIcon, PlusCircleIcon, ClockIcon, DollarSignIcon, UserIcon } from './icons';
+import { CheckCircleIcon, PlusCircleIcon, ClockIcon, DollarSignIcon } from './icons';
 
-interface Professional {
-  id: string;
+type Category = {
+  id: number;
   name: string;
-  email: string;
-  phone: string;
-  is_active: boolean;
-}
+  icon: string | null;
+  display_order: number;
+};
 
 interface ServiceSelectorProps {
   services: Service[];
@@ -138,55 +137,34 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   totalDuration,
   totalPrice
 }) => {
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(null);
-  const [loadingProfessionals, setLoadingProfessionals] = useState<boolean>(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [showFixedFooter, setShowFixedFooter] = useState<boolean>(true);
 
-  // Buscar profissionais ao carregar
+  // Buscar categorias do banco
   useEffect(() => {
-    const fetchProfessionals = async () => {
-      setLoadingProfessionals(true);
+    (async () => {
       try {
-        const res = await fetch('/api/professionals');
+        const res = await fetch('/api/categories');
         const data = await res.json();
-        if (res.ok && data.professionals) {
-          // Filtrar apenas profissionais ativos
-          const activeProfessionals = data.professionals.filter((p: Professional) => p.is_active);
-          setProfessionals(activeProfessionals);
+        if (res.ok && data.categories) {
+          setCategories(data.categories);
         }
       } catch (error) {
-        console.error('Erro ao carregar profissionais:', error);
-      } finally {
-        setLoadingProfessionals(false);
+        console.error('Erro ao carregar categorias:', error);
       }
-    };
-    fetchProfessionals();
+    })();
   }, []);
 
-  // Filtrar serviços baseado no profissional selecionado
+  // Filtrar serviços baseado na categoria selecionada
   const filteredServices = useMemo(() => {
-    if (!selectedProfessionalId) {
-      return services; // Mostrar todos os serviços se nenhum profissional estiver selecionado
+    if (!selectedCategory) {
+      return services; // Mostrar todos os serviços se nenhuma categoria estiver selecionada
     }
     return services.filter(service => 
-      service.responsibleProfessionalId === selectedProfessionalId
+      service.category === selectedCategory
     );
-  }, [services, selectedProfessionalId]);
-
-  // Limpar serviços selecionados quando mudar o profissional
-  useEffect(() => {
-    if (selectedProfessionalId && selectedServices.length > 0) {
-      // Remover serviços que não pertencem ao profissional selecionado
-      const validServices = selectedServices.filter(s => 
-        s.responsibleProfessionalId === selectedProfessionalId
-      );
-      if (validServices.length !== selectedServices.length) {
-        onSelectServices(validServices);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProfessionalId]);
+  }, [services, selectedCategory]);
 
   const toggleService = (service: Service) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
@@ -197,17 +175,9 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     }
   };
 
-  const handleProfessionalChange = (professionalId: string) => {
-    if (professionalId === '') {
-      setSelectedProfessionalId(null);
-    } else {
-      setSelectedProfessionalId(professionalId);
-    }
-    // Limpar seleção de serviços ao mudar profissional
-    onSelectServices([]);
+  const handleCategoryChange = (categoryId: number | null) => {
+    setSelectedCategory(categoryId);
   };
-
-  const selectedProfessional = professionals.find(p => p.id === selectedProfessionalId);
 
   // Detectar scroll para mostrar/esconder o rodapé fixo
   useEffect(() => {
@@ -229,30 +199,36 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Seletor de Profissional */}
-      <div className="bg-white p-4 rounded-lg border border-gray-300 shadow-sm">
-        <label htmlFor="professional-select" className="block text-sm font-medium text-gray-700 mb-2">
-          <UserIcon className="w-5 h-5 inline mr-2 text-[#5b3310]" />
-          Selecionar Profissional
-        </label>
-        <select
-          id="professional-select"
-          value={selectedProfessionalId || ''}
-          onChange={(e) => handleProfessionalChange(e.target.value)}
-          className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310]"
-          disabled={loadingProfessionals}
-        >
-          <option value="">Todos os profissionais</option>
-          {professionals.map(professional => (
-            <option key={professional.id} value={professional.id}>
-              {professional.name}
-            </option>
+      {/* Seletor de Categorias */}
+      <div className="bg-white p-6 rounded-lg border border-gray-300 shadow-sm">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Categorias</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {categories.map(category => (
+            <button
+              key={category.id}
+              onClick={() => handleCategoryChange(selectedCategory === category.id ? null : category.id)}
+              className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all duration-200 ${
+                selectedCategory === category.id
+                  ? 'border-[#5b3310] bg-[#dac4b4]/20 shadow-md'
+                  : 'border-gray-300 bg-white hover:border-[#5b3310] hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-4xl mb-3">{category.icon || '📦'}</span>
+              <span className={`text-sm font-semibold text-center ${
+                selectedCategory === category.id ? 'text-[#3b200d]' : 'text-gray-700'
+              }`}>
+                {category.name}
+              </span>
+            </button>
           ))}
-        </select>
-        {selectedProfessional && (
-          <p className="mt-2 text-sm text-gray-600">
-            Mostrando serviços de: <span className="font-semibold text-[#5b3310]">{selectedProfessional.name}</span>
-          </p>
+        </div>
+        {selectedCategory && (
+          <button
+            onClick={() => handleCategoryChange(null)}
+            className="mt-4 text-sm text-[#5b3310] hover:text-[#3b200d] font-medium"
+          >
+            Limpar filtro
+          </button>
         )}
       </div>
 
@@ -262,8 +238,8 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
           {filteredServices.length === 0 ? (
             <div className="bg-gray-50 border border-gray-300 rounded-lg p-8 text-center">
               <p className="text-gray-600">
-                {selectedProfessionalId 
-                  ? 'Nenhum serviço disponível para este profissional.' 
+                {selectedCategory 
+                  ? 'Nenhum serviço disponível nesta categoria.' 
                   : 'Nenhum serviço disponível no momento.'}
               </p>
             </div>

@@ -8,6 +8,8 @@ export interface Service {
   // opcional: profissional responsável
   responsibleProfessionalId?: string | null;
   responsibleProfessionalName?: string | null;
+  // obrigatório: categoria do serviço (ID da categoria)
+  category: number | null;
 }
 
 export interface Client {
