@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 
 type Banner = {
   id: number;
@@ -44,16 +43,6 @@ const BannerSlider: React.FC = () => {
 
   if (banners.length === 0) return null;
 
-  const handlePrev = () => {
-    setIsAutoPlaying(false);
-    setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
-  };
-
-  const handleNext = () => {
-    setIsAutoPlaying(false);
-    setCurrentIndex((prev) => (prev + 1) % banners.length);
-  };
-
   const handleBannerClick = (banner: Banner) => {
     if (banner.link_url) {
       window.open(banner.link_url, '_blank', 'noopener,noreferrer');
@@ -61,29 +50,30 @@ const BannerSlider: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full mb-8 -mx-4 md:-mx-8">
+    <div className="relative w-full mb-8 -mx-4 md:-mx-8 overflow-hidden">
       {/* Container do Slider com transbordamento - permite overflow nas laterais */}
-      <div className="relative overflow-visible px-4 md:px-8">
-        <div 
-          className="flex transition-transform duration-500 ease-in-out gap-4"
-          style={{
-            transform: `translateX(calc(-${currentIndex * 100}% + ${currentIndex * 1}rem))`
-          }}
-        >
-          {banners.map((banner, index) => {
-            const isActive = index === currentIndex;
-            const isPrev = index === currentIndex - 1;
-            const isNext = index === currentIndex + 1;
-            
-            return (
-              <div
-                key={banner.id}
-                className="flex-shrink-0 relative"
-                style={{
-                  width: 'calc(100vw - 4rem)',
-                  maxWidth: '1200px',
-                }}
-              >
+      <div className="relative overflow-visible">
+        <div className="flex justify-center">
+          <div 
+            className="flex transition-transform duration-500 ease-in-out gap-4"
+            style={{
+              transform: `translateX(calc(-${currentIndex * 100}% - ${currentIndex * 1rem}))`
+            }}
+          >
+            {banners.map((banner, index) => {
+              const isActive = index === currentIndex;
+              const isPrev = index === currentIndex - 1 || (currentIndex === 0 && index === banners.length - 1);
+              const isNext = index === currentIndex + 1 || (currentIndex === banners.length - 1 && index === 0);
+              
+              return (
+                <div
+                  key={banner.id}
+                  className="flex-shrink-0 relative"
+                  style={{
+                    width: 'calc(100vw - 4rem)',
+                    maxWidth: '1200px',
+                  }}
+                >
                 <div
                   className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ${
                     isActive 
@@ -100,7 +90,7 @@ const BannerSlider: React.FC = () => {
                   <img
                     src={banner.image_url}
                     alt={banner.title || 'Banner promocional'}
-                    className="w-full h-[300px] md:h-[400px] object-cover"
+                    className="w-full h-[200px] md:h-[250px] object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -121,27 +111,8 @@ const BannerSlider: React.FC = () => {
               </div>
             );
           })}
+          </div>
         </div>
-
-        {/* Botões de navegação */}
-        {banners.length > 1 && (
-          <>
-            <button
-              onClick={handlePrev}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg border border-gray-300 transition-all duration-200"
-              aria-label="Banner anterior"
-            >
-              <ChevronLeftIcon className="w-6 h-6 text-[#5b3310]" />
-            </button>
-            <button
-              onClick={handleNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg border border-gray-300 transition-all duration-200"
-              aria-label="Próximo banner"
-            >
-              <ChevronRightIcon className="w-6 h-6 text-[#5b3310]" />
-            </button>
-          </>
-        )}
 
         {/* Indicadores de página */}
         {banners.length > 1 && (

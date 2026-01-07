@@ -31,23 +31,43 @@ const ServiceItem: React.FC<{
         isSelected ? 'border-[#5b3310] shadow-lg shadow-[#5b3310]/20' : 'border-gray-300'
       }`}
     >
-      {service.image_url && (
-        <div className="w-full h-48 overflow-hidden bg-gray-100">
-          <img 
-            src={service.image_url} 
-            alt={service.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        </div>
-      )}
-      <div className="p-4">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
+      <div className="flex">
+        {/* Imagem à esquerda */}
+        {service.image_url && (
+          <div className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 overflow-hidden bg-gray-100 relative rounded-l-lg">
+            <img 
+              src={service.image_url} 
+              alt={service.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            {/* Ícone de seleção sobreposto na imagem */}
+            <div className="absolute top-2 right-2">
+              {isSelected ? (
+                <CheckCircleIcon className="w-6 h-6 text-[#3b200d] bg-white rounded-full" />
+              ) : (
+                <PlusCircleIcon className="w-6 h-6 text-gray-400 bg-white rounded-full" />
+              )}
+            </div>
+          </div>
+        )}
+        {!service.image_url && (
+          <div className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex items-center justify-center">
+            {isSelected ? (
+              <CheckCircleIcon className="w-7 h-7 text-[#3b200d]" />
+            ) : (
+              <PlusCircleIcon className="w-7 h-7 text-gray-400" />
+            )}
+          </div>
+        )}
+
+        {/* Informações à direita */}
+        <div className="flex-1 p-4 flex flex-col justify-between">
+          <div>
             <h3 className="text-lg font-bold text-gray-900">{service.name}</h3>
-            <p className="text-gray-600 text-sm mt-1">{service.description}</p>
+            <p className="text-gray-600 text-sm mt-1 line-clamp-2">{service.description}</p>
             {service.responsibleProfessionalName && (
               <p className="text-gray-700 text-sm mt-1">
                 Profissional: {service.responsibleProfessionalName}
@@ -96,11 +116,6 @@ const ServiceItem: React.FC<{
               </div>
             )}
           </div>
-          {isSelected ? (
-            <CheckCircleIcon className="w-7 h-7 text-[#3b200d] flex-shrink-0 ml-4" />
-          ) : (
-            <PlusCircleIcon className="w-7 h-7 text-gray-400 flex-shrink-0 ml-4" />
-          )}
         </div>
       </div>
     </div>
