@@ -88,7 +88,7 @@ const ClientLoginPage: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'Entrando...' : 'Entrar'}
         </button>

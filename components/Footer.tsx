@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
             href="https://pedroriquelme.com.br"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-pink-600 hover:text-pink-700 underline transition-colors"
+            className="text-[#5b3310] hover:text-[#3b200d] underline transition-colors"
           >
             Pedro Riquelme
           </a>

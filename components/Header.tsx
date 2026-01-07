@@ -3,7 +3,7 @@ import { UserIcon } from './icons';
 import { Link } from 'react-router-dom';
 
 // Importar a imagem como módulo
-const iconPath = '/icone-rosa.png';
+const iconPath = '/favicon-marrom.png';
 
 const Header: React.FC = () => {
   return (
@@ -12,7 +12,7 @@ const Header: React.FC = () => {
         <div className="flex items-center gap-3">
           <img 
             src={iconPath} 
-            alt="Studio Riquelme" 
+            alt="SPA Vivaz Cataratas" 
             className="h-8 w-8 md:h-10 md:w-10 object-contain"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -21,14 +21,14 @@ const Header: React.FC = () => {
           />
           <h1 className="text-xl md:text-2xl font-bold tracking-wider text-gray-900">
             Agendamento Online <br className="hidden md:block" />
-            Studio Riquelme
+            SPA Vivaz Cataratas
           </h1>
         </div>
 
         <div className="flex items-center">
           <Link
             to="/login-cliente"
-            className="inline-flex items-center gap-2 text-gray-900 hover:text-pink-600 transition-colors"
+            className="inline-flex items-center gap-2 text-gray-900 hover:text-[#5b3310] transition-colors"
             title="Acessar meus agendamentos"
           >
             <UserIcon className="w-6 h-6" />

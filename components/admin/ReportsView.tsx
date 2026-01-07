@@ -125,9 +125,9 @@ const ReportsView: React.FC = () => {
       <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Relatórios</h2>
       <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-3 mb-6">
         <div className="inline-flex rounded overflow-hidden border border-gray-300">
-          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Mês</button>
-          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Semana</button>
-          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-pink-600 text-white':'bg-white text-gray-700'}`}>Dia</button>
+          <button onClick={() => setView('month')} className={`px-3 py-2 ${view==='month'?'bg-[#3b200d] text-white':'bg-white text-gray-700'}`}>Mês</button>
+          <button onClick={() => setView('week')} className={`px-3 py-2 ${view==='week'?'bg-[#3b200d] text-white':'bg-white text-gray-700'}`}>Semana</button>
+          <button onClick={() => setView('day')} className={`px-3 py-2 ${view==='day'?'bg-[#3b200d] text-white':'bg-white text-gray-700'}`}>Dia</button>
         </div>
         <div className="inline-flex items-center gap-2">
           <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 bg-gray-200 text-gray-900 rounded">Hoje</button>
@@ -191,7 +191,7 @@ const ReportsView: React.FC = () => {
                 <Doughnut
                   data={{
                     labels: byService.labels,
-                    datasets: [{ data: byService.data, backgroundColor: ['#f59e0b','#84cc16','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#ef4444'] }]
+                    datasets: [{ data: byService.data, backgroundColor: ['#f59e0b','#84cc16','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#5b3310','#ef4444'] }]
                   }}
                   options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
                 />
@@ -205,7 +205,7 @@ const ReportsView: React.FC = () => {
             </div>
             <div className="bg-white border border-gray-300 rounded-lg p-4 text-center">
               <div className="text-gray-600 text-sm">Receita (R$)</div>
-              <div className="text-2xl font-bold text-pink-600">{totals.revenue.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-[#3b200d]">{totals.revenue.toFixed(2)}</div>
             </div>
           </div>
         </div>

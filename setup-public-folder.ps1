@@ -4,10 +4,10 @@ if (-not (Test-Path "public")) {
     Write-Host "Pasta public criada"
 }
 
-if (Test-Path "icone-rosa.png") {
-    Copy-Item "icone-rosa.png" "public\icone-rosa.png" -Force
-    Write-Host "Arquivo icone-rosa.png copiado para public/"
+if (Test-Path "favicon-marrom.png") {
+    Copy-Item "favicon-marrom.png" "public\favicon-marrom.png" -Force
+    Write-Host "Arquivo favicon-marrom.png copiado para public/"
 } else {
-    Write-Host "Arquivo icone-rosa.png não encontrado na raiz"
+    Write-Host "Arquivo favicon-marrom.png não encontrado na raiz"
 }
 

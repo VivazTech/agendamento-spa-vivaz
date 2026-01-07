@@ -65,7 +65,7 @@ async function sendViaResend(
 		const emailData = {
 			from: fromEmail,
 			to: email,
-			subject: 'Redefinição de Senha - Studio Riquelme',
+			subject: 'Redefinição de Senha - SPA Vivaz Cataratas',
 			html: getEmailTemplate(resetLink, adminName),
 		};
 
@@ -161,7 +161,7 @@ async function sendViaMailgun(
 		const formData = new URLSearchParams();
 		formData.append('from', fromEmail);
 		formData.append('to', email);
-		formData.append('subject', 'Redefinição de Senha - Studio Riquelme');
+		formData.append('subject', 'Redefinição de Senha - SPA Vivaz Cataratas');
 		formData.append('html', getEmailTemplate(resetLink, adminName));
 
 		const response = await fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
@@ -206,7 +206,7 @@ async function sendViaSendGrid(
 			body: JSON.stringify({
 				personalizations: [{ to: [{ email }] }],
 				from: { email: fromEmail },
-				subject: 'Redefinição de Senha - Studio Riquelme',
+				subject: 'Redefinição de Senha - SPA Vivaz Cataratas',
 				content: [
 					{
 						type: 'text/html',
@@ -239,7 +239,7 @@ function getEmailTemplate(resetLink: string, adminName: string): string {
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
 	<div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; border: 1px solid #e0e0e0;">
-		<h1 style="color: #ec4899; margin-top: 0;">Studio Riquelme</h1>
+		<h1 style="color: #3b200d; margin-top: 0;">SPA Vivaz Cataratas</h1>
 		
 		<h2 style="color: #333;">Redefinição de Senha</h2>
 		
@@ -249,14 +249,14 @@ function getEmailTemplate(resetLink: string, adminName: string): string {
 		
 		<div style="text-align: center; margin: 30px 0;">
 			<a href="${resetLink}" 
-			   style="background-color: #ec4899; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+			   style="background-color: #3b200d; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
 				Redefinir Senha
 			</a>
 		</div>
 		
 		<p style="color: #666; font-size: 14px;">
 			Ou copie e cole este link no seu navegador:<br>
-			<a href="${resetLink}" style="color: #ec4899; word-break: break-all;">${resetLink}</a>
+			<a href="${resetLink}" style="color: #3b200d; word-break: break-all;">${resetLink}</a>
 		</p>
 		
 		<p style="color: #999; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
@@ -266,7 +266,7 @@ function getEmailTemplate(resetLink: string, adminName: string): string {
 	</div>
 	
 	<div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
-		<p>Studio Riquelme - Sistema de Agendamento</p>
+		<p>SPA Vivaz Cataratas - Sistema de Agendamento</p>
 	</div>
 </body>
 </html>

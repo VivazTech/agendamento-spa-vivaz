@@ -228,19 +228,19 @@ const AppointmentsView: React.FC = () => {
           
           return (
           <div key={date}>
-            <h3 className="text-pink-600 font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
+            <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
               {dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             </h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
-                <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300 hover:border-pink-600 transition-colors duration-300">
+                <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300 hover:border-[#5b3310] transition-colors duration-300">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
                       <p className="text-sm text-gray-600">{b.client_phone}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-pink-600 text-lg">R${Number(b.total_price).toFixed(2)}</p>
+                      <p className="font-bold text-[#3b200d] text-lg">R${Number(b.total_price).toFixed(2)}</p>
                       <p className="text-sm text-gray-700">{b.time.slice(0,5)}</p>
                     </div>
                   </div>

@@ -41,7 +41,7 @@ const ClientBookingsPage: React.FC = () => {
     return (
       <div className="max-w-lg mx-auto text-center bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
         <p className="text-gray-700 mb-4">Você precisa entrar para ver seus agendamentos.</p>
-        <a href="/login-cliente" className="text-pink-600 font-semibold hover:underline">Ir para login</a>
+        <a href="/login-cliente" className="text-[#5b3310] font-semibold hover:underline">Ir para login</a>
       </div>
     );
   }
@@ -65,7 +65,7 @@ const ClientBookingsPage: React.FC = () => {
               <div className="font-semibold text-gray-900">
                 {new Date(r.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.time?.slice(0,5)}
               </div>
-              <div className="text-pink-600 font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
+              <div className="text-[#3b200d] font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
             </div>
             <div className="text-gray-700 mt-2">
               {(r.services || []).map(s => s.name).join(', ')}
@@ -147,7 +147,7 @@ const ClientBookingsPage: React.FC = () => {
                   Fechar
                 </button>
                 <button
-                  className="px-4 py-2 rounded-lg bg-pink-600 text-white font-semibold hover:bg-pink-700"
+                  className="px-4 py-2 rounded-lg bg-[#3b200d] text-white font-semibold hover:bg-[#5b3310]"
                   onClick={async () => {
                     try {
                       const res = await fetch('/api/bookings', {

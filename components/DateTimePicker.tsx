@@ -51,10 +51,10 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
             onClick={() => !isPast(d) && onDateSelect(d)}
             disabled={isPast(d)}
             className={`w-10 h-10 rounded-full transition-colors duration-200
-              ${isPast(d) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-pink-600 hover:text-white'}
+              ${isPast(d) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-[#3b200d] hover:text-white'}
               ${d.getMonth() !== currentMonth.getMonth() ? 'text-gray-400' : 'text-gray-900'}
-              ${isToday(d) && !isSelected(d) ? 'border-2 border-pink-600' : ''}
-              ${isSelected(d) ? 'bg-pink-600 text-white font-bold' : ''}
+              ${isToday(d) && !isSelected(d) ? 'border-2 border-[#5b3310]' : ''}
+              ${isSelected(d) ? 'bg-[#3b200d] text-white font-bold' : ''}
             `}
           >
             {d.getDate()}
@@ -130,7 +130,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
             <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
             {Object.entries(availableSlots).map(([period, slots]) => (
                 <div key={period} className="mb-4">
-                    <h4 className="font-semibold text-pink-600 mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
+                    <h4 className="font-semibold text-[#5b3310] mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                         {/* Fix: Use Array.isArray as a type guard to ensure 'slots' is treated as an array, resolving the 'unknown' type issue. */}
                         {Array.isArray(slots) && slots.map(time => (
@@ -138,7 +138,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
                                 key={time} 
                                 onClick={() => setSelectedTime(time)}
                                 className={`p-2 rounded-lg transition-colors duration-200 border-2 text-gray-900
-                                    ${selectedTime === time ? 'bg-pink-600 text-white border-pink-600 font-bold' : 'bg-gray-50 border-gray-300 hover:border-pink-600'}
+                                    ${selectedTime === time ? 'bg-[#3b200d] text-white border-[#3b200d] font-bold' : 'bg-gray-50 border-gray-300 hover:border-[#5b3310]'}
                                 `}
                             >
                                 {time}
@@ -154,7 +154,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         <button 
             onClick={handleNext}
             disabled={!selectedTime}
-            className="bg-pink-600 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
+            className="bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
         >
             Próximo
         </button>
