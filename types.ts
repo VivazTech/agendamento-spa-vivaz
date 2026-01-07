@@ -21,6 +21,8 @@ export interface Service {
   image_url?: string | null;
   // opcional: variações de preço por duração
   price_variations?: PriceVariation[];
+  // opcional: variação selecionada (quando o serviço tem variações)
+  selectedVariation?: PriceVariation | null;
 }
 
 export interface Client {

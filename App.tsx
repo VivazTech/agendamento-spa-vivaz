@@ -45,12 +45,24 @@ const App: React.FC = () => {
   }, []);
 
   const totalDuration = useMemo(() => 
-    booking.services?.reduce((total, s) => total + s.duration, 0) || 0,
+    booking.services?.reduce((total, s) => {
+      // Se tem variação selecionada, usar a duração da variação
+      if (s.selectedVariation) {
+        return total + s.selectedVariation.duration_minutes;
+      }
+      return total + s.duration;
+    }, 0) || 0,
     [booking.services]
   );
 
   const totalPrice = useMemo(() => 
-    booking.services?.reduce((total, s) => total + s.price, 0) || 0,
+    booking.services?.reduce((total, s) => {
+      // Se tem variação selecionada, usar o preço da variação
+      if (s.selectedVariation) {
+        return total + s.selectedVariation.price;
+      }
+      return total + s.price;
+    }, 0) || 0,
     [booking.services]
   );
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Service } from '../types';
+import { Service, PriceVariation } from '../types';
 import { CheckCircleIcon, PlusCircleIcon, ClockIcon, DollarSignIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
 
 type Category = {
@@ -43,24 +43,38 @@ const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: (
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900">{service.name}</h3>
             <p className="text-gray-600 text-sm mt-1">{service.description}</p>
-            <p className="text-gray-700 text-sm mt-1">
-              {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
-            </p>
+            {service.responsibleProfessionalName && (
+              <p className="text-gray-700 text-sm mt-1">
+                Profissional: {service.responsibleProfessionalName}
+              </p>
+            )}
             {/* Variações de preço ou preço único */}
             {service.price_variations && service.price_variations.length > 0 ? (
               <div className="mt-3 space-y-2">
-                <p className="text-xs font-semibold text-gray-600 mb-2">Opções de duração e preço:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {service.price_variations.map((variation) => (
-                    <div
-                      key={variation.id}
-                      className="bg-[#f5f0eb] border border-[#dac4b4] rounded-lg p-2 text-center"
-                    >
-                      <div className="text-xs text-gray-600">{variation.duration_minutes} min</div>
-                      <div className="text-sm font-bold text-[#5b3310]">R$ {variation.price.toFixed(2)}</div>
+                {isSelected && service.selectedVariation ? (
+                  // Mostrar variação selecionada
+                  <div className="bg-[#5b3310] border-2 border-[#5b3310] rounded-lg p-3 text-center">
+                    <div className="text-xs text-white opacity-90">Selecionado:</div>
+                    <div className="text-sm text-white font-semibold mt-1">{service.selectedVariation.duration_minutes} min</div>
+                    <div className="text-base text-white font-bold mt-1">R$ {service.selectedVariation.price.toFixed(2)}</div>
+                  </div>
+                ) : (
+                  // Mostrar todas as opções
+                  <>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Opções de duração e preço:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {service.price_variations.map((variation) => (
+                        <div
+                          key={variation.id}
+                          className="bg-[#f5f0eb] border border-[#dac4b4] rounded-lg p-2 text-center"
+                        >
+                          <div className="text-xs text-gray-600">{variation.duration_minutes} min</div>
+                          <div className="text-sm font-bold text-[#5b3310]">R$ {variation.price.toFixed(2)}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="flex items-center space-x-4 mt-3 text-gray-700 text-sm">
@@ -85,19 +99,29 @@ const BookingSummary: React.FC<{
   totalDuration: number;
   totalPrice: number;
   onNext: () => void;
-}> = ({ selectedServices, totalDuration, totalPrice, onNext }) => (
+  onNextClick: () => void;
+}> = ({ selectedServices, totalDuration, totalPrice, onNext, onNextClick }) => (
     <div className="sticky top-24 bg-white p-6 rounded-lg border border-gray-300 shadow-xl">
         <h2 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3 mb-4">Resumo do Agendamento</h2>
         {selectedServices.length === 0 ? (
           <p className="text-gray-600">Selecione um serviço para começar.</p>
         ) : (
           <ul className="space-y-2 mb-4">
-            {selectedServices.map(s => (
-              <li key={s.id} className="flex justify-between text-gray-700">
-                <span>{s.name}</span>
-                <span>R${s.price.toFixed(2)}</span>
-              </li>
-            ))}
+            {selectedServices.map(s => {
+              const displayPrice = s.selectedVariation ? s.selectedVariation.price : s.price;
+              const displayDuration = s.selectedVariation ? s.selectedVariation.duration_minutes : s.duration;
+              return (
+                <li key={s.id} className="flex justify-between text-gray-700">
+                  <div>
+                    <span className="font-medium">{s.name}</span>
+                    {s.selectedVariation && (
+                      <span className="text-xs text-gray-500 block">({s.selectedVariation.duration_minutes} min)</span>
+                    )}
+                  </div>
+                  <span>R${displayPrice.toFixed(2)}</span>
+                </li>
+              );
+            })}
           </ul>
         )}
         <div className="border-t border-gray-300 pt-4 mt-4 space-y-3">
@@ -111,7 +135,7 @@ const BookingSummary: React.FC<{
           </div>
         </div>
         <button
-          onClick={onNext}
+          onClick={onNextClick}
           disabled={selectedServices.length === 0}
           className="w-full bg-[#3b200d] text-white font-bold py-3 px-4 rounded-lg mt-6 transition-all duration-300 hover:bg-[#5b3310] disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
         >
@@ -125,8 +149,9 @@ const FixedFooter: React.FC<{
   selectedServices: Service[];
   totalPrice: number;
   onNext: () => void;
+  onNextClick: () => void;
   isVisible: boolean;
-}> = ({ selectedServices, totalPrice, onNext, isVisible }) => {
+}> = ({ selectedServices, totalPrice, onNext, onNextClick, isVisible }) => {
   if (selectedServices.length === 0) return null;
 
   return (
@@ -150,10 +175,76 @@ const FixedFooter: React.FC<{
             </div>
           </div>
           <button
-            onClick={onNext}
+            onClick={onNextClick}
             className="bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-2.5 px-6 rounded-lg transition-all duration-300 shadow-md whitespace-nowrap"
           >
             Próximo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal para seleção de variação de preço
+const VariationSelectionModal: React.FC<{
+  service: Service;
+  onSelect: (variation: PriceVariation) => void;
+  onClose: () => void;
+}> = ({ service, onSelect, onClose }) => {
+  if (!service.price_variations || service.price_variations.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl border border-gray-300 shadow-2xl w-full max-w-md"
+        onClick={e => e.stopPropagation()}
+      >
+        {service.image_url && (
+          <div className="w-full h-48 overflow-hidden bg-gray-100 rounded-t-2xl">
+            <img
+              src={service.image_url}
+              alt={service.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        )}
+        <div className="p-6">
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">{service.name}</h3>
+          {service.description && (
+            <p className="text-gray-600 text-sm mb-6">{service.description}</p>
+          )}
+          <p className="text-sm font-semibold text-gray-700 mb-4">Escolha a duração e preço:</p>
+          <div className="space-y-3">
+            {service.price_variations.map((variation) => (
+              <button
+                key={variation.id}
+                onClick={() => onSelect(variation)}
+                className="w-full bg-white border-2 border-gray-300 hover:border-[#5b3310] rounded-xl p-4 text-left transition-all duration-200 hover:bg-[#f5f0eb]"
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <ClockIcon className="w-5 h-5 text-[#5b3310]" />
+                    <span className="font-semibold text-gray-900">{variation.duration_minutes} minutos</span>
+                  </div>
+                  <span className="text-lg font-bold text-[#5b3310]">R$ {variation.price.toFixed(2)}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full mt-6 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors"
+          >
+            Cancelar
           </button>
         </div>
       </div>
@@ -173,6 +264,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [showFixedFooter, setShowFixedFooter] = useState<boolean>(true);
   const [categorySliderIndex, setCategorySliderIndex] = useState<number>(0);
+  const [variationModalService, setVariationModalService] = useState<Service | null>(null);
 
   // Buscar categorias do banco
   useEffect(() => {
@@ -204,10 +296,68 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   const toggleService = (service: Service) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
     if (isSelected) {
-      onSelectServices(selectedServices.filter(s => s.id !== service.id));
+      // Se tem variações, permitir alterar a variação ao invés de remover
+      if (service.price_variations && service.price_variations.length > 0) {
+        setVariationModalService(service);
+      } else {
+        // Sem variações, remover serviço
+        onSelectServices(selectedServices.filter(s => s.id !== service.id));
+      }
     } else {
-      onSelectServices([...selectedServices, service]);
+      // Se tem variações, abrir modal para escolher
+      if (service.price_variations && service.price_variations.length > 0) {
+        setVariationModalService(service);
+      } else {
+        // Sem variações, adicionar diretamente
+        onSelectServices([...selectedServices, service]);
+      }
     }
+  };
+
+  const handleVariationSelect = (variation: PriceVariation) => {
+    if (!variationModalService) return;
+    
+    // Verificar se o serviço já está selecionado
+    const isAlreadySelected = selectedServices.some(s => s.id === variationModalService.id);
+    
+    // Criar serviço com a variação selecionada
+    const serviceWithVariation: Service = {
+      ...variationModalService,
+      price: variation.price,
+      duration: variation.duration_minutes,
+      selectedVariation: variation,
+    };
+    
+    if (isAlreadySelected) {
+      // Atualizar serviço existente
+      onSelectServices(selectedServices.map(s => 
+        s.id === variationModalService.id ? serviceWithVariation : s
+      ));
+    } else {
+      // Adicionar à lista de serviços selecionados
+      onSelectServices([...selectedServices, serviceWithVariation]);
+    }
+    
+    // Fechar modal
+    setVariationModalService(null);
+  };
+
+  const handleNextClick = () => {
+    // Validar que serviços com variações tenham uma variação selecionada
+    const servicesWithVariations = selectedServices.filter(s => 
+      s.price_variations && s.price_variations.length > 0
+    );
+    
+    const allHaveSelectedVariation = servicesWithVariations.every(s => 
+      s.selectedVariation !== null && s.selectedVariation !== undefined
+    );
+    
+    if (servicesWithVariations.length > 0 && !allHaveSelectedVariation) {
+      alert('Por favor, selecione uma opção de duração e preço para todos os serviços que têm variações.');
+      return;
+    }
+    
+    onNext();
   };
 
   const handleCategoryChange = (categoryId: number | null) => {
@@ -325,14 +475,19 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
               </p>
             </div>
           ) : (
-            filteredServices.map(service => (
-              <ServiceItem 
-                key={service.id}
-                service={service}
-                isSelected={selectedServices.some(s => s.id === service.id)}
-                onToggle={() => toggleService(service)}
-              />
-            ))
+            filteredServices.map(service => {
+              // Se o serviço está selecionado, usar a versão com variação selecionada
+              const selectedService = selectedServices.find(s => s.id === service.id);
+              const serviceToDisplay = selectedService || service;
+              return (
+                <ServiceItem 
+                  key={service.id}
+                  service={serviceToDisplay}
+                  isSelected={selectedServices.some(s => s.id === service.id)}
+                  onToggle={() => toggleService(service)}
+                />
+              );
+            })
           )}
         </div>
         <div className="lg:col-span-1">
@@ -341,6 +496,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
             totalDuration={totalDuration}
             totalPrice={totalPrice}
             onNext={onNext}
+            onNextClick={handleNextClick}
           />
         </div>
       </div>
@@ -350,8 +506,18 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
         selectedServices={selectedServices}
         totalPrice={totalPrice}
         onNext={onNext}
+        onNextClick={handleNextClick}
         isVisible={showFixedFooter && selectedServices.length > 0}
       />
+
+      {/* Modal de Seleção de Variação */}
+      {variationModalService && (
+        <VariationSelectionModal
+          service={variationModalService}
+          onSelect={handleVariationSelect}
+          onClose={() => setVariationModalService(null)}
+        />
+      )}
     </div>
   );
 };
