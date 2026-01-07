@@ -83,7 +83,7 @@ const ServicesView: React.FC = () => {
       // Gerenciar variações de preço
       if (serviceId && service.price_variations) {
         // Buscar variações existentes
-        const existingRes = await fetch(`/api/service-variations?service_id=${serviceId}`);
+        const existingRes = await fetch(`/api/services?action=variation&service_id=${serviceId}`);
         const existingData = await existingRes.json().catch(() => ({ variations: [] }));
         const existingVariations = existingData.variations || [];
         
@@ -91,7 +91,7 @@ const ServicesView: React.FC = () => {
         for (const existing of existingVariations) {
           const stillExists = service.price_variations.some(v => v.id === existing.id);
           if (!stillExists) {
-            await fetch(`/api/service-variations?id=${existing.id}`, { method: 'DELETE' });
+            await fetch(`/api/services?action=variation&id=${existing.id}`, { method: 'DELETE' });
           }
         }
         
@@ -106,7 +106,7 @@ const ServicesView: React.FC = () => {
           
           if (variation.id) {
             // Atualizar existente
-            await fetch('/api/service-variations', {
+            await fetch('/api/services?action=variation', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -118,7 +118,7 @@ const ServicesView: React.FC = () => {
             });
           } else {
             // Criar nova
-            await fetch('/api/service-variations', {
+            await fetch('/api/services?action=variation', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(variationData),
@@ -127,11 +127,11 @@ const ServicesView: React.FC = () => {
         }
       } else if (serviceId && (!service.price_variations || service.price_variations.length === 0)) {
         // Se não há variações, deletar todas as existentes
-        const existingRes = await fetch(`/api/service-variations?service_id=${serviceId}`);
+        const existingRes = await fetch(`/api/services?action=variation&service_id=${serviceId}`);
         const existingData = await existingRes.json().catch(() => ({ variations: [] }));
         const existingVariations = existingData.variations || [];
         for (const existing of existingVariations) {
-          await fetch(`/api/service-variations?id=${existing.id}`, { method: 'DELETE' });
+          await fetch(`/api/services?action=variation&id=${existing.id}`, { method: 'DELETE' });
         }
       }
       
