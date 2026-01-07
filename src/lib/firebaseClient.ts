@@ -24,13 +24,17 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 		console.log('[FirebaseClient] Verificando redirect result...');
 		console.log('[FirebaseClient] URL atual:', window.location.href);
 		console.log('[FirebaseClient] Auth instance:', auth);
-		console.log('[FirebaseClient] Auth currentUser:', auth.currentUser);
+		console.log('[FirebaseClient] Auth currentUser antes do getRedirectResult:', auth.currentUser);
 		
 		// Verificar se há parâmetros na URL que indicam redirect
 		const urlParams = new URLSearchParams(window.location.search);
-		const hasAuthParams = urlParams.has('apiKey') || window.location.hash.includes('auth');
+		const urlHash = window.location.hash;
+		const hasAuthParams = urlParams.has('apiKey') || urlHash.includes('auth') || urlHash.includes('access_token');
 		console.log('[FirebaseClient] URL tem parâmetros de auth?', hasAuthParams);
+		console.log('[FirebaseClient] URL search:', window.location.search);
+		console.log('[FirebaseClient] URL hash:', urlHash.substring(0, 200));
 		
+		// Tentar getRedirectResult primeiro
 		const redirectResult = await getRedirectResult(auth);
 		console.log('[FirebaseClient] getRedirectResult retornou:', redirectResult ? 'resultado encontrado' : 'null');
 		
@@ -44,7 +48,29 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 			console.log('[FirebaseClient] idToken obtido com sucesso, tamanho:', idToken.length);
 			return { idToken, cred: redirectResult };
 		}
-		console.log('[FirebaseClient] Nenhum redirect result encontrado');
+		
+		// Se getRedirectResult não funcionou, verificar se há usuário autenticado diretamente
+		// (pode ter sido autenticado mas o getRedirectResult não capturou)
+		console.log('[FirebaseClient] getRedirectResult retornou null, verificando currentUser...');
+		if (auth.currentUser) {
+			console.log('[FirebaseClient] currentUser encontrado!', {
+				email: auth.currentUser.email,
+				uid: auth.currentUser.uid,
+			});
+			const idToken = await auth.currentUser.getIdToken();
+			console.log('[FirebaseClient] idToken obtido do currentUser, tamanho:', idToken.length);
+			// Criar um UserCredential simulado
+			return { 
+				idToken, 
+				cred: {
+					user: auth.currentUser,
+					providerId: 'google.com',
+					operationType: 'signIn'
+				} as UserCredential
+			};
+		}
+		
+		console.log('[FirebaseClient] Nenhum redirect result encontrado e nenhum currentUser');
 		return null;
 	} catch (error: any) {
 		console.error('[FirebaseClient] Erro ao verificar redirect result:', {

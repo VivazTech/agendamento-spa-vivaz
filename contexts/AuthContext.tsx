@@ -43,7 +43,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         
         // Se não há redirect result, verificar se há usuário autenticado no Firebase
-        // (pode ter sido autenticado em outra aba ou sessão anterior)
+        // Aguardar um pouco para ver se o Firebase atualiza o estado
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const { auth } = await import('../src/lib/firebaseClient');
+        if (auth.currentUser && !hasProcessedRedirect.current) {
+          console.log('[AuthContext] currentUser encontrado após aguardar, processando login...');
+          try {
+            const idToken = await auth.currentUser.getIdToken();
+            await processLogin(idToken);
+            return;
+          } catch (error) {
+            console.error('[AuthContext] Erro ao obter idToken do currentUser:', error);
+          }
+        }
+        
+        // Também configurar listener para mudanças futuras
+        const { onAuthStateChange } = await import('../src/lib/firebaseClient');
         onAuthStateChange(async (firebaseUser) => {
           if (firebaseUser && !hasProcessedRedirect.current) {
             console.log('[AuthContext] Usuário autenticado no Firebase detectado via onAuthStateChange');
