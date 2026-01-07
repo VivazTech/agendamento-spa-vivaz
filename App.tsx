@@ -208,7 +208,7 @@ const App: React.FC = () => {
             element={
               <>
                 {step === 'services' && (
-                  <div className="w-full pt-4 -mx-4 md:-mx-8">
+                  <div className="w-full pt-4">
                     <BannerSlider />
                   </div>
                 )}

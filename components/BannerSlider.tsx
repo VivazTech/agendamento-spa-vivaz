@@ -81,9 +81,9 @@ const BannerSlider: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full mb-8 -mx-4 md:-mx-8 overflow-hidden">
-      {/* Container do Slider - mostra apenas um banner por vez */}
-      <div className="relative">
+    <div className="w-full mb-8 overflow-hidden">
+      <div className="relative w-full">
+        {/* Container do Slider */}
         <div 
           className="flex transition-transform duration-500 ease-in-out"
           style={{
@@ -93,44 +93,43 @@ const BannerSlider: React.FC = () => {
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
-          {banners.map((banner, index) => {
-            return (
+          {banners.map((banner) => (
+            <div
+              key={banner.id}
+              className="flex-shrink-0 w-full"
+            >
               <div
-                key={banner.id}
-                className="flex-shrink-0 w-full relative"
+                className="relative rounded-2xl overflow-hidden cursor-pointer mx-auto"
+                style={{ maxWidth: '1200px' }}
+                onClick={() => {
+                  if (banner.link_url) {
+                    handleBannerClick(banner);
+                  }
+                }}
               >
-                <div
-                  className="relative rounded-2xl overflow-hidden cursor-pointer"
-                  onClick={() => {
-                    if (banner.link_url) {
-                      handleBannerClick(banner);
-                    }
+                <img
+                  src={banner.image_url}
+                  alt={banner.title || 'Banner promocional'}
+                  className="w-full h-[200px] md:h-[250px] object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
                   }}
-                >
-                  <img
-                    src={banner.image_url}
-                    alt={banner.title || 'Banner promocional'}
-                    className="w-full h-[200px] md:h-[250px] object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                  {(banner.title || banner.description) && (
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end">
-                      <div className="p-6 text-white">
-                        {banner.title && (
-                          <h3 className="text-2xl md:text-3xl font-bold mb-2">{banner.title}</h3>
-                        )}
-                        {banner.description && (
-                          <p className="text-sm md:text-base opacity-90">{banner.description}</p>
-                        )}
-                      </div>
+                />
+                {(banner.title || banner.description) && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end">
+                    <div className="p-6 text-white">
+                      {banner.title && (
+                        <h3 className="text-2xl md:text-3xl font-bold mb-2">{banner.title}</h3>
+                      )}
+                      {banner.description && (
+                        <p className="text-sm md:text-base opacity-90">{banner.description}</p>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
 
         {/* Indicadores de página */}
@@ -159,4 +158,3 @@ const BannerSlider: React.FC = () => {
 };
 
 export default BannerSlider;
-
