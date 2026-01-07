@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 
 interface Admin {
   id: string;
@@ -21,6 +21,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const hasProcessedRedirect = useRef<boolean>(false);
 
   useEffect(() => {
     // Verificar se há resultado de redirect do Firebase
@@ -47,8 +48,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               localStorage.setItem('admin_authenticated', 'true');
               localStorage.setItem('admin_data', JSON.stringify(data.admin));
               console.log('[AuthContext] Login via redirect successful');
+              hasProcessedRedirect.current = true;
               setIsLoading(false);
+              
+              // Redirecionar para /admin após login bem-sucedido
+              // Verificar se não estamos já na rota /admin
+              const currentPath = window.location.pathname;
+              if (currentPath !== '/admin') {
+                console.log('[AuthContext] Redirecionando para /admin após login bem-sucedido');
+                // Usar replace para não adicionar ao histórico
+                window.location.replace('/admin');
+              }
               return;
+            } else {
+              console.error('[AuthContext] Login falhou:', data.error);
             }
           }
         }

@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { loginWithGoogle } = useAuth();
+  const { loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirecionar automaticamente se já estiver autenticado
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      console.log('[LoginPage] Usuário já autenticado, redirecionando para /admin');
+      navigate('/admin', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleGoogleLogin = async () => {
     setError('');
