@@ -10,11 +10,14 @@ import UserDetailsForm from './components/UserDetailsForm';
 import ConfirmationPage from './components/ConfirmationPage';
 import Admin from './components/admin/Admin';
 import ProtectedRoute from './components/admin/ProtectedRoute';
+import SupabaseProtectedRoute from './src/components/SupabaseProtectedRoute';
 import ProfilesList from './components/ProfilesList';
 import TestSupabaseConnection from './components/TestSupabaseConnection';
 import Footer from './components/Footer';
 import ClientLoginPage from './components/client/ClientLoginPage';
 import ClientBookingsPage from './components/client/ClientBookingsPage';
+import Login from './src/pages/Login';
+import Dashboard from './src/pages/Dashboard';
 
 type Step = 'services' | 'datetime' | 'details' | 'confirmation';
 
@@ -199,6 +202,8 @@ const App: React.FC = () => {
       <Header />
       <main className="container mx-auto p-4 md:p-8 flex-grow">
         <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<SupabaseProtectedRoute><Dashboard /></SupabaseProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="/login-cliente" element={<ClientLoginPage />} />
           <Route path="/meus-agendamentos" element={<ClientBookingsPage />} />

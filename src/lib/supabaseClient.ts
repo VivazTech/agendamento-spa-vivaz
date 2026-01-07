@@ -1,38 +1,24 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// Obter variáveis de ambiente
+const VITE_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const VITE_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Criar cliente apenas se as variáveis estiverem definidas
-// Isso evita que o app quebre na inicialização
-let supabase: SupabaseClient | null = null;
-
-if (supabaseUrl && supabaseAnonKey) {
-  try {
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
-  } catch (error) {
-    console.error('Erro ao criar cliente Supabase:', error);
-  }
-} else {
-  console.warn('Variáveis de ambiente do Supabase não estão definidas. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+// Validações
+if (!VITE_SUPABASE_URL) {
+  console.error('❌ VITE_SUPABASE_URL não está definida! Configure no arquivo .env ou nas variáveis de ambiente do Vercel.');
 }
 
-// Exportar o cliente ou lançar erro apenas quando for usado
-export const getSupabaseClient = (): SupabaseClient => {
-  if (!supabase) {
-    if (!supabaseUrl) {
-      throw new Error('VITE_SUPABASE_URL não está definida no ambiente.');
-    }
-    if (!supabaseAnonKey) {
-      throw new Error('VITE_SUPABASE_ANON_KEY não está definida no ambiente.');
-    }
-    throw new Error('Cliente Supabase não foi inicializado.');
-  }
-  return supabase;
-};
+if (!VITE_SUPABASE_ANON_KEY) {
+  console.error('❌ VITE_SUPABASE_ANON_KEY não está definida! Configure no arquivo .env ou nas variáveis de ambiente do Vercel.');
+}
 
-// Exportar diretamente para compatibilidade com código existente
-// Mas agora é seguro - retorna null se não estiver configurado
-export { supabase };
+if (!VITE_SUPABASE_URL || !VITE_SUPABASE_ANON_KEY) {
+  console.warn('⚠️ Cliente Supabase não será inicializado. Configure as variáveis de ambiente necessárias.');
+}
 
-
+// Criar cliente Supabase
+export const supabase = createClient(
+  VITE_SUPABASE_URL || '',
+  VITE_SUPABASE_ANON_KEY || ''
+);

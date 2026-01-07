@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Booking } from '../types';
 import { CalendarIcon, ClockIcon, DollarSignIcon, CheckCircleIcon, UserIcon } from './icons';
-import { getSupabaseClient } from '@/src/lib/supabaseClient';
 
 interface ConfirmationPageProps {
   booking: Booking;

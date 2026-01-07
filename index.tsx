@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SupabaseAuthProvider } from './src/contexts/SupabaseAuthContext';
 import App from './App';
 
 const rootElement = document.getElementById('root');
@@ -14,9 +15,11 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <SupabaseAuthProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </SupabaseAuthProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
