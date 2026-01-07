@@ -83,11 +83,11 @@ const BannerSlider: React.FC = () => {
   return (
     <div className="relative w-full mb-8 -mx-4 md:-mx-8 overflow-hidden">
       {/* Container do Slider com transbordamento - permite overflow nas laterais */}
-      <div className="relative overflow-visible">
+      <div className="relative overflow-visible flex justify-center">
         <div 
           className="flex transition-transform duration-500 ease-in-out gap-2"
           style={{
-            transform: `translateX(calc(50% - 50vw + ${(currentIndex * -100)}% - ${currentIndex * 8}px))`,
+            transform: `translateX(calc(-${currentIndex * 100}% - ${currentIndex * 8}px))`,
           }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
