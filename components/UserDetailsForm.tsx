@@ -36,6 +36,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
     phone: '',
     email: '', // Mantido para compatibilidade, mas não será usado
     notes: '',
+    room_number: '',
   });
   
   const [errors, setErrors] = useState<Partial<Client>>({});
@@ -166,6 +167,18 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
             className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310]" 
           />
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
+        </div>
+        <div>
+          <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-1">Número do Quarto (opcional)</label>
+          <input 
+            type="text" 
+            id="room_number" 
+            name="room_number" 
+            value={formData.room_number || ''} 
+            onChange={handleChange}
+            placeholder="Ex: 101, 205, etc."
+            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310]" 
+          />
         </div>
         <div>
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>

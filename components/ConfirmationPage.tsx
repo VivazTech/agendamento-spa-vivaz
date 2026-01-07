@@ -92,6 +92,9 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                 <div>
                     <span className="text-sm text-gray-600">Cliente</span>
                     <p className="font-semibold text-gray-900">{client.name}</p>
+                    {client.room_number && (
+                      <p className="text-xs text-gray-500 mt-1">Quarto: {client.room_number}</p>
+                    )}
                 </div>
             </div>
              <div className="flex items-center">

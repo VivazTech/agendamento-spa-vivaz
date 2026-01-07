@@ -17,6 +17,7 @@ export interface Client {
   phone: string;
   email: string;
   notes?: string;
+  room_number?: string;
 }
 
 export interface Booking {

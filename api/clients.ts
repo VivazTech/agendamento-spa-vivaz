@@ -20,11 +20,11 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'GET') {
 			const client = await getClient();
 			try {
-				const { rows } = await client.query(
-					`select id, name, phone, email, notes, created_at, updated_at
+			const { rows } = await client.query(
+				`select id, name, phone, email, notes, room_number, created_at, updated_at
            from public.clients
            order by created_at desc`
-				);
+			);
 				return res.status(200).json({ ok: true, clients: rows });
 			} finally {
 				await client.end();
@@ -32,11 +32,12 @@ export default async function handler(req: any, res: any) {
 		}
 
 		if (req.method === 'POST') {
-			const { name, phone, email, notes } = (req.body || {}) as {
+			const { name, phone, email, notes, room_number } = (req.body || {}) as {
 				name?: string;
 				phone?: string;
 				email?: string;
 				notes?: string;
+				room_number?: string;
 			};
 
 			if (!name || !phone || !email) {
@@ -46,10 +47,10 @@ export default async function handler(req: any, res: any) {
 			const client = await getClient();
 			try {
 				const { rows } = await client.query(
-					`insert into public.clients (name, phone, email, notes)
-           values ($1, $2, $3, $4)
-           returning id, name, phone, email, notes, created_at, updated_at`,
-					[name, phone, email, notes || null]
+					`insert into public.clients (name, phone, email, notes, room_number)
+           values ($1, $2, $3, $4, $5)
+           returning id, name, phone, email, notes, room_number, created_at, updated_at`,
+					[name, phone, email, notes || null, room_number || null]
 				);
 				return res.status(201).json({ ok: true, client: rows[0] });
 			} finally {

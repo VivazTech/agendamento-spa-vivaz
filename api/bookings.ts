@@ -49,7 +49,7 @@ export default async function handler(req: any, res: any) {
           date,
           time,
           professional_id,
-          clients:client_id ( id, name, phone, email ),
+          clients:client_id ( id, name, phone, email, room_number ),
           booking_services (
             quantity,
             services:service_id ( id, name, price, duration_minutes )
@@ -101,6 +101,7 @@ export default async function handler(req: any, res: any) {
 					client_name: b.clients?.name,
 					client_phone: b.clients?.phone,
 					client_email: b.clients?.email,
+					client_room_number: b.clients?.room_number || null,
 					total_price: total_price.toFixed(2),
 					total_duration_minutes,
 					services,
@@ -143,7 +144,7 @@ export default async function handler(req: any, res: any) {
 				date?: string; // yyyy-mm-dd
 				time?: string; // HH:MM or HH:MM:SS
 				professional_id?: string | null;
-				client?: { name?: string; email?: string; phone?: string; notes?: string | null };
+				client?: { name?: string; email?: string; phone?: string; notes?: string | null; room_number?: string | null };
 				services?: Array<{ id: number; quantity?: number }>;
 			};
 
@@ -259,6 +260,7 @@ export default async function handler(req: any, res: any) {
 						phone: clientPayload.phone,
 						email: clientEmail,
 						notes: clientPayload.notes ?? null,
+						room_number: clientPayload.room_number ?? null,
 						updated_at: new Date().toISOString(),
 					})
 					.eq('id', clientId);
@@ -270,6 +272,7 @@ export default async function handler(req: any, res: any) {
 						phone: clientPayload.phone,
 						email: clientEmail,
 						notes: clientPayload.notes ?? null,
+						room_number: clientPayload.room_number ?? null,
 					})
 					.select('id')
 					.single();
@@ -361,7 +364,7 @@ export default async function handler(req: any, res: any) {
 					date,
 					time,
 					professional_id,
-					clients:client_id ( id, name, phone, email ),
+					clients:client_id ( id, name, phone, email, room_number ),
 					professionals:professional_id ( id, name, phone, email ),
 					booking_services (
 						quantity,
