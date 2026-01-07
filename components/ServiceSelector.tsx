@@ -65,8 +65,8 @@ const ServiceItem: React.FC<{
                       onEditVariation?.();
                     }}
                   >
-                    <div className="text-xs text-white opacity-90 mb-2 text-center">Selecionado:</div>
                     <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs text-white opacity-90">Selecionado:</div>
                       <div className="text-sm text-white font-semibold">{service.selectedVariation.duration_minutes} min</div>
                       <div className="text-base text-white font-bold">R$ {service.selectedVariation.price.toFixed(2)}</div>
                     </div>
