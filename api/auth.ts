@@ -511,17 +511,35 @@ export default async function handler(req: any, res: any) {
 				const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
 				// Buscar admin por username
+				// Buscar sem role primeiro (compatibilidade com tabelas antigas)
 				const { data: admin, error } = await supabase
 					.from('admins')
-					.select('id, username, name, email, password_hash, role, is_active')
+					.select('id, username, name, email, password_hash, is_active')
 					.eq('username', username)
 					.single();
 
 				if (error || !admin) {
+					console.error('[AUTH] Erro ao buscar admin:', error);
 					return res.status(401).json({
 						ok: false,
 						error: 'Usuário ou senha inválidos',
 					});
+				}
+				
+				// Tentar buscar role separadamente (se o campo existir)
+				let role = 'admin'; // Default
+				try {
+					const { data: adminWithRole } = await supabase
+						.from('admins')
+						.select('role')
+						.eq('id', admin.id)
+						.single();
+					if (adminWithRole?.role) {
+						role = adminWithRole.role;
+					}
+				} catch (e) {
+					// Campo role não existe, usar default
+					console.log('[AUTH] Campo role não encontrado, usando default');
 				}
 
 				// Verificar se está ativo
@@ -554,7 +572,7 @@ export default async function handler(req: any, res: any) {
 						username: admin.username,
 						name: admin.name,
 						email: admin.email,
-						role: admin.role || 'colaborador',
+						role: role,
 					},
 				});
 			} catch (err: any) {
