@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, UserCredential } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, setPersistence, browserLocalPersistence, UserCredential } from 'firebase/auth';
 
 const firebaseConfig = {
 	apiKey: "AIzaSyDSZoGmC0YHGIorbIM54DCzd2EKzpIvd1w",
@@ -12,6 +12,12 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// Configurar persistência para manter o estado após redirect
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+	console.error('[FirebaseClient] Erro ao configurar persistência:', error);
+});
+
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -34,7 +40,7 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 		console.log('[FirebaseClient] URL search:', window.location.search);
 		console.log('[FirebaseClient] URL hash:', urlHash.substring(0, 200));
 		
-		// Tentar getRedirectResult primeiro
+		// Tentar getRedirectResult primeiro - IMPORTANTE: deve ser chamado ANTES de qualquer outra coisa
 		const redirectResult = await getRedirectResult(auth);
 		console.log('[FirebaseClient] getRedirectResult retornou:', redirectResult ? 'resultado encontrado' : 'null');
 		
@@ -49,11 +55,15 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 			return { idToken, cred: redirectResult };
 		}
 		
-		// Se getRedirectResult não funcionou, verificar se há usuário autenticado diretamente
-		// (pode ter sido autenticado mas o getRedirectResult não capturou)
-		console.log('[FirebaseClient] getRedirectResult retornou null, verificando currentUser...');
+		// Se getRedirectResult não funcionou, aguardar um pouco e verificar currentUser
+		// O Firebase pode precisar de tempo para processar o redirect
+		console.log('[FirebaseClient] getRedirectResult retornou null, aguardando e verificando currentUser...');
+		await new Promise(resolve => setTimeout(resolve, 1000)); // Aguardar 1 segundo
+		
+		// Verificar currentUser novamente após aguardar
+		console.log('[FirebaseClient] Auth currentUser após aguardar:', auth.currentUser);
 		if (auth.currentUser) {
-			console.log('[FirebaseClient] currentUser encontrado!', {
+			console.log('[FirebaseClient] currentUser encontrado após aguardar!', {
 				email: auth.currentUser.email,
 				uid: auth.currentUser.uid,
 			});

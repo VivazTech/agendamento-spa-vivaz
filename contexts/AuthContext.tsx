@@ -42,11 +42,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return;
         }
         
-        // Se não há redirect result, verificar se há usuário autenticado no Firebase
-        // Aguardar um pouco para ver se o Firebase atualiza o estado
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Se não há redirect result, aguardar mais tempo e verificar currentUser
+        // O Firebase pode precisar de mais tempo para processar o redirect
+        console.log('[AuthContext] Aguardando Firebase processar redirect...');
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Aguardar 2 segundos
         
         const { auth } = await import('../src/lib/firebaseClient');
+        console.log('[AuthContext] Verificando currentUser após aguardar:', auth.currentUser);
+        
         if (auth.currentUser && !hasProcessedRedirect.current) {
           console.log('[AuthContext] currentUser encontrado após aguardar, processando login...');
           try {
@@ -58,19 +61,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
         
-        // Também configurar listener para mudanças futuras
+        // Configurar listener para mudanças no estado de autenticação
+        // Isso é importante porque o Firebase pode atualizar o estado de forma assíncrona
         const { onAuthStateChange: setupAuthListener } = await import('../src/lib/firebaseClient');
-        setupAuthListener(async (firebaseUser) => {
-          if (firebaseUser && !hasProcessedRedirect.current) {
-            console.log('[AuthContext] Usuário autenticado no Firebase detectado via onAuthStateChange');
-            try {
-              const idToken = await firebaseUser.getIdToken();
-              await processLogin(idToken);
-            } catch (error) {
-              console.error('[AuthContext] Erro ao obter idToken do Firebase user:', error);
+        let listenerUnsubscribe: (() => void) | null = null;
+        
+        // Aguardar até 5 segundos por mudança no estado de autenticação
+        const authStatePromise = new Promise<void>((resolve) => {
+          let resolved = false;
+          
+          listenerUnsubscribe = setupAuthListener(async (firebaseUser) => {
+            if (firebaseUser && !hasProcessedRedirect.current && !resolved) {
+              resolved = true;
+              console.log('[AuthContext] Usuário autenticado no Firebase detectado via onAuthStateChange');
+              try {
+                const idToken = await firebaseUser.getIdToken();
+                await processLogin(idToken);
+                if (listenerUnsubscribe) listenerUnsubscribe();
+                resolve();
+              } catch (error) {
+                console.error('[AuthContext] Erro ao obter idToken do Firebase user:', error);
+                if (listenerUnsubscribe) listenerUnsubscribe();
+                resolve();
+              }
+            } else if (!firebaseUser && !resolved) {
+              // Se não há usuário após 5 segundos, continuar
+              setTimeout(() => {
+                if (!resolved) {
+                  resolved = true;
+                  if (listenerUnsubscribe) listenerUnsubscribe();
+                  resolve();
+                }
+              }, 5000);
             }
-          }
+          });
         });
+        
+        // Aguardar o listener ou timeout
+        await authStatePromise;
         
       } catch (error) {
         console.error('[AuthContext] Erro ao verificar redirect:', error);
