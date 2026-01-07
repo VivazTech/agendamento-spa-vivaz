@@ -9,7 +9,6 @@ import DateTimePicker from './components/DateTimePicker';
 import UserDetailsForm from './components/UserDetailsForm';
 import ConfirmationPage from './components/ConfirmationPage';
 import Admin from './components/admin/Admin';
-import ProtectedRoute from './components/admin/ProtectedRoute';
 import ProfilesList from './components/ProfilesList';
 import TestSupabaseConnection from './components/TestSupabaseConnection';
 import Footer from './components/Footer';
@@ -193,14 +192,7 @@ const App: React.FC = () => {
       </div>
       <main className="container mx-auto p-4 md:p-8 flex-grow">
         <Routes>
-          <Route 
-            path="/admin" 
-            element={
-              <ProtectedRoute>
-                <Admin />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/login-cliente" element={<ClientLoginPage />} />
           <Route path="/meus-agendamentos" element={<ClientBookingsPage />} />
           <Route path="/profiles" element={<ProfilesList />} />
