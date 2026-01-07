@@ -26,6 +26,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     // Verificar se há resultado de redirect do Firebase
     const checkAuth = async () => {
+      // IMPORTANTE: Manter isLoading = true até processar tudo
+      setIsLoading(true);
+      
       try {
         const { checkRedirectResult } = await import('../src/lib/firebaseClient');
         const redirectResult = await checkRedirectResult();
@@ -42,6 +45,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const contentType = res.headers.get('content-type') || '';
           if (contentType.includes('application/json')) {
             const data = await res.json();
+            console.log('[AuthContext] Resposta do backend:', { ok: data.ok, hasAdmin: !!data.admin, error: data.error });
+            
             if (data.ok && data.admin) {
               setIsAuthenticated(true);
               setAdmin(data.admin);
@@ -49,21 +54,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               localStorage.setItem('admin_data', JSON.stringify(data.admin));
               console.log('[AuthContext] Login via redirect successful');
               hasProcessedRedirect.current = true;
-              setIsLoading(false);
+              
+              // Aguardar um pouco para garantir que o estado foi atualizado
+              await new Promise(resolve => setTimeout(resolve, 100));
               
               // Redirecionar para /admin após login bem-sucedido
-              // Verificar se não estamos já na rota /admin
               const currentPath = window.location.pathname;
+              console.log('[AuthContext] Path atual:', currentPath);
+              
               if (currentPath !== '/admin') {
                 console.log('[AuthContext] Redirecionando para /admin após login bem-sucedido');
-                // Usar replace para não adicionar ao histórico
                 window.location.replace('/admin');
+                return; // Não definir isLoading = false aqui, pois a página será redirecionada
+              } else {
+                console.log('[AuthContext] Já estamos em /admin, não precisa redirecionar');
               }
+              
+              setIsLoading(false);
               return;
             } else {
               console.error('[AuthContext] Login falhou:', data.error);
+              // Se o login falhou, continuar para verificar localStorage
             }
+          } else {
+            console.error('[AuthContext] Resposta não é JSON');
           }
+        } else {
+          console.log('[AuthContext] Nenhum redirect result encontrado');
         }
       } catch (error) {
         console.error('[AuthContext] Erro ao verificar redirect:', error);
@@ -78,12 +95,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const adminData = JSON.parse(savedAdmin);
           setIsAuthenticated(true);
           setAdmin(adminData);
+          console.log('[AuthContext] Sessão restaurada do localStorage');
         } catch (e) {
           // Se houver erro ao parsear, limpar dados inválidos
           localStorage.removeItem('admin_authenticated');
           localStorage.removeItem('admin_data');
         }
       }
+      
       setIsLoading(false);
     };
 
