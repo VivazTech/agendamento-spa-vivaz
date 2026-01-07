@@ -19,7 +19,12 @@ interface ServiceSelectorProps {
   totalPrice: number;
 }
 
-const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: () => void; }> = ({ service, isSelected, onToggle }) => (
+const ServiceItem: React.FC<{ 
+  service: Service; 
+  isSelected: boolean; 
+  onToggle: () => void;
+  onEditVariation?: () => void;
+}> = ({ service, isSelected, onToggle, onEditVariation }) => (
     <div
       onClick={onToggle}
       className={`bg-white rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-[#5b3310] shadow-sm overflow-hidden ${
@@ -53,10 +58,18 @@ const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: (
               <div className="mt-3 space-y-2">
                 {isSelected && service.selectedVariation ? (
                   // Mostrar variação selecionada
-                  <div className="bg-[#5b3310] border-2 border-[#5b3310] rounded-lg p-3 text-center">
-                    <div className="text-xs text-white opacity-90">Selecionado:</div>
-                    <div className="text-sm text-white font-semibold mt-1">{service.selectedVariation.duration_minutes} min</div>
-                    <div className="text-base text-white font-bold mt-1">R$ {service.selectedVariation.price.toFixed(2)}</div>
+                  <div 
+                    className="bg-[#5b3310] border-2 border-[#5b3310] rounded-lg p-3 cursor-pointer hover:bg-[#6b4020] transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditVariation?.();
+                    }}
+                  >
+                    <div className="text-xs text-white opacity-90 mb-2 text-center">Selecionado:</div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm text-white font-semibold">{service.selectedVariation.duration_minutes} min</div>
+                      <div className="text-base text-white font-bold">R$ {service.selectedVariation.price.toFixed(2)}</div>
+                    </div>
                   </div>
                 ) : (
                   // Mostrar todas as opções
@@ -296,13 +309,8 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   const toggleService = (service: Service) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
     if (isSelected) {
-      // Se tem variações, permitir alterar a variação ao invés de remover
-      if (service.price_variations && service.price_variations.length > 0) {
-        setVariationModalService(service);
-      } else {
-        // Sem variações, remover serviço
-        onSelectServices(selectedServices.filter(s => s.id !== service.id));
-      }
+      // Remover serviço (tanto com quanto sem variações)
+      onSelectServices(selectedServices.filter(s => s.id !== service.id));
     } else {
       // Se tem variações, abrir modal para escolher
       if (service.price_variations && service.price_variations.length > 0) {
@@ -479,12 +487,18 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
               // Se o serviço está selecionado, usar a versão com variação selecionada
               const selectedService = selectedServices.find(s => s.id === service.id);
               const serviceToDisplay = selectedService || service;
+              const isSelected = selectedServices.some(s => s.id === service.id);
               return (
                 <ServiceItem 
                   key={service.id}
                   service={serviceToDisplay}
-                  isSelected={selectedServices.some(s => s.id === service.id)}
+                  isSelected={isSelected}
                   onToggle={() => toggleService(service)}
+                  onEditVariation={
+                    isSelected && service.price_variations && service.price_variations.length > 0
+                      ? () => setVariationModalService(service)
+                      : undefined
+                  }
                 />
               );
             })
