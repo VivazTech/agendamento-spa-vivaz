@@ -3,7 +3,7 @@ import { UserIcon } from './icons';
 import { Link } from 'react-router-dom';
 
 // Importar a imagem como módulo
-const iconPath = '/favicon-marrom.png';
+const logoPath = '/logo2.png';
 
 const Header: React.FC = () => {
   return (
@@ -11,15 +11,15 @@ const Header: React.FC = () => {
       <div className="container mx-auto flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <img 
-            src={iconPath} 
+            src={logoPath} 
             alt="SPA Vivaz Cataratas" 
-            className="h-8 w-8 md:h-10 md:w-10 object-contain"
+            className="h-6 w-auto object-contain"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
             }}
           />
-          <h1 className="text-xl md:text-2xl font-bold tracking-wider text-gray-900">
+          <h1 className="text-sm font-normal tracking-wider text-gray-400">
             Agendamento Online <br className="hidden md:block" />
             SPA Vivaz Cataratas
           </h1>

@@ -50,6 +50,10 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
       // Remove caracteres não numéricos e aplica máscara
       const masked = applyPhoneMask(value);
       setFormData(prev => ({ ...prev, [name]: masked }));
+    } else if (name === 'room_number') {
+      // Aceitar apenas números e limitar a 4 dígitos
+      const numbers = value.replace(/\D/g, '').slice(0, 4);
+      setFormData(prev => ({ ...prev, [name]: numbers }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -169,14 +173,30 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
         </div>
         <div>
-          <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-1">Número do Quarto (opcional)</label>
+          <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-1">Acomodações (opcional)</label>
           <input 
             type="text" 
             id="room_number" 
             name="room_number" 
             value={formData.room_number || ''} 
             onChange={handleChange}
-            placeholder="Ex: 101, 205, etc."
+            onKeyDown={(e) => {
+              // Permitir backspace, delete, tab, escape, enter e setas
+              if ([8, 9, 27, 13, 46, 35, 36, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+                // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (e.keyCode === 65 && e.ctrlKey === true) ||
+                (e.keyCode === 67 && e.ctrlKey === true) ||
+                (e.keyCode === 86 && e.ctrlKey === true) ||
+                (e.keyCode === 88 && e.ctrlKey === true)) {
+                return;
+              }
+              // Garantir que é um número e não uma tecla especial
+              if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                e.preventDefault();
+              }
+            }}
+            maxLength={4}
+            placeholder="1234"
             className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310]" 
           />
         </div>

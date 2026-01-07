@@ -53,27 +53,27 @@ const BannerSlider: React.FC = () => {
     <div className="relative w-full mb-8 -mx-4 md:-mx-8 overflow-hidden">
       {/* Container do Slider com transbordamento - permite overflow nas laterais */}
       <div className="relative overflow-visible">
-        <div className="flex justify-center">
-          <div 
-            className="flex transition-transform duration-500 ease-in-out gap-4"
-            style={{
-              transform: `translateX(calc(-${currentIndex * 100}% - ${currentIndex * 16}px))`
-            }}
-          >
-            {banners.map((banner, index) => {
-              const isActive = index === currentIndex;
-              const isPrev = index === currentIndex - 1 || (currentIndex === 0 && index === banners.length - 1);
-              const isNext = index === currentIndex + 1 || (currentIndex === banners.length - 1 && index === 0);
-              
-              return (
-                <div
-                  key={banner.id}
-                  className="flex-shrink-0 relative"
-                  style={{
-                    width: 'calc(100vw - 4rem)',
-                    maxWidth: '1200px',
-                  }}
-                >
+        <div 
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{
+            transform: `translateX(calc(50vw - 50% - ${currentIndex * 100}% - ${currentIndex * 8}px))`,
+            gap: '8px'
+          }}
+        >
+          {banners.map((banner, index) => {
+            const isActive = index === currentIndex;
+            const isPrev = index === currentIndex - 1 || (currentIndex === 0 && index === banners.length - 1);
+            const isNext = index === currentIndex + 1 || (currentIndex === banners.length - 1 && index === 0);
+            
+            return (
+              <div
+                key={banner.id}
+                className="flex-shrink-0 relative"
+                style={{
+                  width: 'calc(100vw - 4rem)',
+                  maxWidth: '1200px',
+                }}
+              >
                 <div
                   className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ${
                     isActive 
@@ -111,7 +111,6 @@ const BannerSlider: React.FC = () => {
               </div>
             );
           })}
-          </div>
         </div>
 
         {/* Indicadores de página */}

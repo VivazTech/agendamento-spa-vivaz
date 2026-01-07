@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Service, Booking, Client } from './types';
 import Header from './components/Header';
@@ -25,6 +25,15 @@ const App: React.FC = () => {
   const [availableServices, setAvailableServices] = useState<Service[]>([]);
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [servicesLoading, setServicesLoading] = useState<boolean>(false);
+  const prevStepRef = useRef<Step>('services');
+
+  // Scroll para o topo quando mudar de step
+  useEffect(() => {
+    if (prevStepRef.current !== step) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      prevStepRef.current = step;
+    }
+  }, [step]);
 
   useEffect(() => {
     (async () => {
@@ -187,9 +196,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans flex flex-col">
       <Header />
-      <div className="w-full pt-4">
-        <BannerSlider />
-      </div>
       <main className="container mx-auto p-4 md:p-8 flex-grow">
         <Routes>
           <Route path="/admin" element={<Admin />} />
@@ -201,6 +207,9 @@ const App: React.FC = () => {
             path="/"
             element={
               <>
+                <div className="w-full pt-4 -mx-4 md:-mx-8">
+                  <BannerSlider />
+                </div>
                 {step !== 'confirmation' && <StepIndicator currentStep={step} />}
                 <div className="mt-8">
                   {renderStep()}

@@ -34,11 +34,11 @@ const ServiceItem: React.FC<{
       <div className="flex">
         {/* Imagem à esquerda */}
         {service.image_url && (
-          <div className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 overflow-hidden bg-gray-100 relative rounded-l-lg">
+          <div className="w-32 md:w-40 flex-shrink-0 overflow-hidden bg-gray-100 relative rounded-l-lg self-stretch">
             <img 
               src={service.image_url} 
               alt={service.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover min-h-[128px] md:min-h-[160px]"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
@@ -54,7 +54,7 @@ const ServiceItem: React.FC<{
           </div>
         )}
         {!service.image_url && (
-          <div className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex items-center justify-center">
+          <div className="w-32 md:w-40 flex-shrink-0 flex items-center justify-center self-stretch min-h-[128px] md:min-h-[160px]">
             {isSelected ? (
               <CheckCircleIcon className="w-7 h-7 text-[#3b200d]" />
             ) : (
@@ -64,7 +64,7 @@ const ServiceItem: React.FC<{
         )}
 
         {/* Informações à direita */}
-        <div className="flex-1 p-4 flex flex-col justify-between">
+        <div className="flex-1 p-4 flex flex-col justify-between min-h-[128px] md:min-h-[160px]">
           <div>
             <h3 className="text-lg font-bold text-gray-900">{service.name}</h3>
             <p className="text-gray-600 text-sm mt-1 line-clamp-2">{service.description}</p>
@@ -85,10 +85,13 @@ const ServiceItem: React.FC<{
                       onEditVariation?.();
                     }}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs text-white opacity-90">Selecionado:</div>
+                    <div className="text-xs text-white opacity-90 mb-2">Selecionado:</div>
+                    <div className="flex items-center gap-3">
                       <div className="text-sm text-white font-semibold">{service.selectedVariation.duration_minutes} min</div>
-                      <div className="text-base text-white font-bold">R$ {service.selectedVariation.price.toFixed(2)}</div>
+                      <div className="text-base text-white font-bold whitespace-nowrap">
+                        <span className="text-[10px]">R$</span> {Math.floor(service.selectedVariation.price)}
+                        <span className="text-[10px]">,{String(service.selectedVariation.price.toFixed(2)).split('.')[1]}</span>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -102,7 +105,10 @@ const ServiceItem: React.FC<{
                           className="bg-[#f5f0eb] border border-[#dac4b4] rounded-lg p-2 text-center"
                         >
                           <div className="text-xs text-gray-600">{variation.duration_minutes} min</div>
-                          <div className="text-sm font-bold text-[#5b3310]">R$ {variation.price.toFixed(2)}</div>
+                          <div className="text-sm font-bold text-[#5b3310] whitespace-nowrap">
+                            <span className="text-[10px]">R$</span> {Math.floor(variation.price)}
+                            <span className="text-[10px]">,{String(variation.price.toFixed(2)).split('.')[1]}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -421,9 +427,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   return (
     <div className="space-y-6 pb-20">
       {/* Seletor de Categorias com Slider */}
-      <div className="bg-white p-6 rounded-lg border border-gray-300 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Categorias</h2>
-        <div className="relative">
+      <div className="relative">
           {/* Botão Anterior */}
           {canNavigate && categorySliderIndex > 0 && (
             <button
@@ -484,7 +488,6 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
             Limpar filtro
           </button>
         )}
-      </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
