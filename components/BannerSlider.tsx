@@ -57,7 +57,7 @@ const BannerSlider: React.FC = () => {
           <div 
             className="flex transition-transform duration-500 ease-in-out gap-4"
             style={{
-              transform: `translateX(calc(-${currentIndex * 100}% - ${currentIndex * 1rem}))`
+              transform: `translateX(calc(-${currentIndex * 100}% - ${currentIndex * 16}px))`
             }}
           >
             {banners.map((banner, index) => {
