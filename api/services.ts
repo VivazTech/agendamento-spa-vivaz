@@ -29,6 +29,34 @@ export default async function handler(req: any, res: any) {
         `)
 				.order('name', { ascending: true });
 			if (error) return res.status(500).json({ ok: false, error: error.message });
+			
+			// Buscar variações de preço para todos os serviços
+			const serviceIds = (data || []).map((s: any) => s.id);
+			let variationsMap: Record<number, any[]> = {};
+			
+			if (serviceIds.length > 0) {
+				const { data: variationsData, error: variationsError } = await supabase
+					.from('service_price_variations')
+					.select('*')
+					.in('service_id', serviceIds)
+					.order('display_order', { ascending: true })
+					.order('duration_minutes', { ascending: true });
+				
+				if (!variationsError && variationsData) {
+					variationsData.forEach((v: any) => {
+						if (!variationsMap[v.service_id]) {
+							variationsMap[v.service_id] = [];
+						}
+						variationsMap[v.service_id].push({
+							id: v.id,
+							duration_minutes: Number(v.duration_minutes),
+							price: Number(v.price),
+							display_order: Number(v.display_order),
+						});
+					});
+				}
+			}
+			
 			const services = (data || []).map((r: any) => ({
 				id: r.id,
 				name: r.name,
@@ -39,6 +67,7 @@ export default async function handler(req: any, res: any) {
 				responsibleProfessionalName: r.professionals?.name || null,
 				category: r.category ? Number(r.category) : null,
 				image_url: r.image_url || null,
+				price_variations: variationsMap[r.id] || [],
 			}));
 			return res.status(200).json({ ok: true, services });
 		}

@@ -46,10 +46,28 @@ const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: (
             <p className="text-gray-700 text-sm mt-1">
               {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
             </p>
-            <div className="flex items-center space-x-4 mt-3 text-gray-700 text-sm">
-              <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> {service.duration} min</span>
-              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> R${service.price.toFixed(2)}</span>
-            </div>
+            {/* Variações de preço ou preço único */}
+            {service.price_variations && service.price_variations.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-600 mb-2">Opções de duração e preço:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {service.price_variations.map((variation) => (
+                    <div
+                      key={variation.id}
+                      className="bg-[#f5f0eb] border border-[#dac4b4] rounded-lg p-2 text-center"
+                    >
+                      <div className="text-xs text-gray-600">{variation.duration_minutes} min</div>
+                      <div className="text-sm font-bold text-[#5b3310]">R$ {variation.price.toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4 mt-3 text-gray-700 text-sm">
+                <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> {service.duration} min</span>
+                <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> R${service.price.toFixed(2)}</span>
+              </div>
+            )}
           </div>
           {isSelected ? (
             <CheckCircleIcon className="w-7 h-7 text-[#3b200d] flex-shrink-0 ml-4" />
@@ -247,23 +265,23 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
           {/* Container do Slider */}
           <div className={`overflow-hidden ${canNavigate ? 'mx-8' : ''}`}>
             <div 
-              className="flex transition-transform duration-300 ease-in-out"
+              className="flex transition-transform duration-300 ease-in-out gap-3"
               style={{
-                transform: canNavigate ? `translateX(-${categorySliderIndex * (100 / itemsPerView)}%)` : 'none'
+                transform: canNavigate ? `translateX(calc(-${categorySliderIndex * (100 / itemsPerView)}% - ${categorySliderIndex * 0.75}rem))` : 'none'
               }}
             >
               {categories.map(category => (
-                <div key={category.id} className="flex-shrink-0" style={{ width: `${100 / itemsPerView}%` }}>
+                <div key={category.id} className="flex-shrink-0" style={{ width: `calc(${100 / itemsPerView}% - 0.5625rem)` }}>
                   <button
                     onClick={() => handleCategoryChange(selectedCategory === category.id ? null : category.id)}
-                    className={`w-full flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all duration-200 ${
+                    className={`w-full h-[120px] flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 ${
                       selectedCategory === category.id
                         ? 'border-[#5b3310] bg-[#dac4b4]/20 shadow-md'
                         : 'border-gray-300 bg-white hover:border-[#5b3310] hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-4xl mb-3">{category.icon || '📦'}</span>
-                    <span className={`text-sm font-semibold text-center ${
+                    <span className="text-3xl mb-2">{category.icon || '📦'}</span>
+                    <span className={`text-xs font-semibold text-center leading-tight px-1 ${
                       selectedCategory === category.id ? 'text-[#3b200d]' : 'text-gray-700'
                     }`}>
                       {category.name}

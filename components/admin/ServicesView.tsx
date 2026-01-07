@@ -41,6 +41,8 @@ const ServicesView: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      let serviceId: number;
+      
       if (editingService) {
         const res = await fetch('/api/services', {
           method: 'PUT',
@@ -58,6 +60,7 @@ const ServicesView: React.FC = () => {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || 'Erro ao atualizar serviço');
+        serviceId = editingService.id;
       } else {
         const res = await fetch('/api/services', {
           method: 'POST',
@@ -74,7 +77,64 @@ const ServicesView: React.FC = () => {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || 'Erro ao criar serviço');
+        serviceId = data?.id;
       }
+      
+      // Gerenciar variações de preço
+      if (serviceId && service.price_variations) {
+        // Buscar variações existentes
+        const existingRes = await fetch(`/api/service-variations?service_id=${serviceId}`);
+        const existingData = await existingRes.json().catch(() => ({ variations: [] }));
+        const existingVariations = existingData.variations || [];
+        
+        // Deletar variações que não estão mais na lista
+        for (const existing of existingVariations) {
+          const stillExists = service.price_variations.some(v => v.id === existing.id);
+          if (!stillExists) {
+            await fetch(`/api/service-variations?id=${existing.id}`, { method: 'DELETE' });
+          }
+        }
+        
+        // Criar ou atualizar variações
+        for (let i = 0; i < service.price_variations.length; i++) {
+          const variation = service.price_variations[i];
+          const variationData = {
+            ...variation,
+            service_id: serviceId,
+            display_order: i,
+          };
+          
+          if (variation.id) {
+            // Atualizar existente
+            await fetch('/api/service-variations', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: variation.id,
+                duration_minutes: variation.duration_minutes,
+                price: variation.price,
+                display_order: i,
+              }),
+            });
+          } else {
+            // Criar nova
+            await fetch('/api/service-variations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(variationData),
+            });
+          }
+        }
+      } else if (serviceId && (!service.price_variations || service.price_variations.length === 0)) {
+        // Se não há variações, deletar todas as existentes
+        const existingRes = await fetch(`/api/service-variations?service_id=${serviceId}`);
+        const existingData = await existingRes.json().catch(() => ({ variations: [] }));
+        const existingVariations = existingData.variations || [];
+        for (const existing of existingVariations) {
+          await fetch(`/api/service-variations?id=${existing.id}`, { method: 'DELETE' });
+        }
+      }
+      
       await load();
       handleCloseModal();
     } catch (e: any) {

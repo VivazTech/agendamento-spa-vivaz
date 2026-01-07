@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Service, Booking, Client } from './types';
 import Header from './components/Header';
+import BannerSlider from './components/BannerSlider';
 import StepIndicator from './components/StepIndicator';
 import ServiceSelector from './components/ServiceSelector';
 import DateTimePicker from './components/DateTimePicker';
@@ -175,6 +176,9 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans flex flex-col">
       <Header />
+      <div className="w-full pt-4">
+        <BannerSlider />
+      </div>
       <main className="container mx-auto p-4 md:p-8 flex-grow">
         <Routes>
           <Route 

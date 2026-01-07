@@ -1,4 +1,11 @@
 
+export interface PriceVariation {
+  id: number;
+  duration_minutes: number;
+  price: number;
+  display_order: number;
+}
+
 export interface Service {
   id: number;
   name: string;
@@ -12,6 +19,8 @@ export interface Service {
   category: number | null;
   // opcional: URL da imagem do serviço
   image_url?: string | null;
+  // opcional: variações de preço por duração
+  price_variations?: PriceVariation[];
 }
 
 export interface Client {
