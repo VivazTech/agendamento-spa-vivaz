@@ -53,6 +53,7 @@ const ServicesView: React.FC = () => {
             description: service.description,
             responsibleProfessionalId: service.responsibleProfessionalId ?? null,
             category: service.category ?? null,
+            image_url: service.image_url ?? null,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -68,6 +69,7 @@ const ServicesView: React.FC = () => {
             description: service.description,
             responsibleProfessionalId: service.responsibleProfessionalId ?? null,
             category: service.category ?? null,
+            image_url: service.image_url ?? null,
           }),
         });
         const data = await res.json().catch(() => ({}));

@@ -10,6 +10,8 @@ export interface Service {
   responsibleProfessionalName?: string | null;
   // obrigatório: categoria do serviço (ID da categoria)
   category: number | null;
+  // opcional: URL da imagem do serviço
+  image_url?: string | null;
 }
 
 export interface Client {

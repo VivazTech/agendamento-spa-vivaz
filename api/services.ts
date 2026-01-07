@@ -24,6 +24,7 @@ export default async function handler(req: any, res: any) {
           description,
           responsible_professional_id,
           category,
+          image_url,
           professionals:responsible_professional_id ( id, name )
         `)
 				.order('name', { ascending: true });
@@ -37,6 +38,7 @@ export default async function handler(req: any, res: any) {
 				responsibleProfessionalId: r.responsible_professional_id,
 				responsibleProfessionalName: r.professionals?.name || null,
 				category: r.category ? Number(r.category) : null,
+				image_url: r.image_url || null,
 			}));
 			return res.status(200).json({ ok: true, services });
 		}
@@ -44,8 +46,8 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'POST') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { name, price, duration, description, responsibleProfessionalId, category } = body as {
-				name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null; category?: number | null;
+			const { name, price, duration, description, responsibleProfessionalId, category, image_url } = body as {
+				name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null; category?: number | null; image_url?: string | null;
 			};
 			if (!name || !price || !duration || !category) {
 				return res.status(400).json({ ok: false, error: 'name, price, duration e category são obrigatórios' });
@@ -59,6 +61,7 @@ export default async function handler(req: any, res: any) {
 					description: description || '',
 					responsible_professional_id: responsibleProfessionalId ?? null,
 					category: category,
+					image_url: image_url || null,
 				})
 				.select('id')
 				.single();
@@ -69,8 +72,8 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'PUT') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { id, name, price, duration, description, responsibleProfessionalId, category } = body as {
-				id?: number; name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null; category?: number | null;
+			const { id, name, price, duration, description, responsibleProfessionalId, category, image_url } = body as {
+				id?: number; name?: string; price?: number; duration?: number; description?: string; responsibleProfessionalId?: string | null; category?: number | null; image_url?: string | null;
 			};
 			if (!id || !name || !price || !duration || !category) {
 				return res.status(400).json({ ok: false, error: 'id, name, price, duration e category são obrigatórios' });
@@ -84,6 +87,7 @@ export default async function handler(req: any, res: any) {
 					description: description || '',
 					responsible_professional_id: responsibleProfessionalId ?? null,
 					category: category,
+					image_url: image_url || null,
 				})
 				.eq('id', id);
 			if (error) return res.status(500).json({ ok: false, error: error.message });

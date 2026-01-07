@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Service } from '../types';
-import { CheckCircleIcon, PlusCircleIcon, ClockIcon, DollarSignIcon } from './icons';
+import { CheckCircleIcon, PlusCircleIcon, ClockIcon, DollarSignIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
 
 type Category = {
   id: number;
@@ -22,27 +22,41 @@ interface ServiceSelectorProps {
 const ServiceItem: React.FC<{ service: Service; isSelected: boolean; onToggle: () => void; }> = ({ service, isSelected, onToggle }) => (
     <div
       onClick={onToggle}
-      className={`bg-white p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-[#5b3310] shadow-sm ${
+      className={`bg-white rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-[#5b3310] shadow-sm overflow-hidden ${
         isSelected ? 'border-[#5b3310] shadow-lg shadow-[#5b3310]/20' : 'border-gray-300'
       }`}
     >
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-lg font-bold text-gray-900">{service.name}</h3>
-          <p className="text-gray-600 text-sm mt-1">{service.description}</p>
-          <p className="text-gray-700 text-sm mt-1">
-            {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
-          </p>
-          <div className="flex items-center space-x-4 mt-3 text-gray-700 text-sm">
-            <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> {service.duration} min</span>
-            <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> R${service.price.toFixed(2)}</span>
-          </div>
+      {service.image_url && (
+        <div className="w-full h-48 overflow-hidden bg-gray-100">
+          <img 
+            src={service.image_url} 
+            alt={service.name}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
         </div>
-        {isSelected ? (
-          <CheckCircleIcon className="w-7 h-7 text-[#3b200d] flex-shrink-0 ml-4" />
-        ) : (
-          <PlusCircleIcon className="w-7 h-7 text-gray-400 flex-shrink-0 ml-4" />
-        )}
+      )}
+      <div className="p-4">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <h3 className="text-lg font-bold text-gray-900">{service.name}</h3>
+            <p className="text-gray-600 text-sm mt-1">{service.description}</p>
+            <p className="text-gray-700 text-sm mt-1">
+              {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
+            </p>
+            <div className="flex items-center space-x-4 mt-3 text-gray-700 text-sm">
+              <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> {service.duration} min</span>
+              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> R${service.price.toFixed(2)}</span>
+            </div>
+          </div>
+          {isSelected ? (
+            <CheckCircleIcon className="w-7 h-7 text-[#3b200d] flex-shrink-0 ml-4" />
+          ) : (
+            <PlusCircleIcon className="w-7 h-7 text-gray-400 flex-shrink-0 ml-4" />
+          )}
+        </div>
       </div>
     </div>
 );
@@ -140,6 +154,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [showFixedFooter, setShowFixedFooter] = useState<boolean>(true);
+  const [categorySliderIndex, setCategorySliderIndex] = useState<number>(0);
 
   // Buscar categorias do banco
   useEffect(() => {
@@ -149,6 +164,8 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
         const data = await res.json();
         if (res.ok && data.categories) {
           setCategories(data.categories);
+          // Resetar índice do slider quando categorias mudarem
+          setCategorySliderIndex(0);
         }
       } catch (error) {
         console.error('Erro ao carregar categorias:', error);
@@ -179,6 +196,19 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     setSelectedCategory(categoryId);
   };
 
+  // Funções para navegar o slider de categorias
+  const itemsPerView = 4;
+  const maxIndex = Math.max(0, categories.length - itemsPerView);
+  const canNavigate = categories.length > itemsPerView;
+
+  const handlePrevCategory = () => {
+    setCategorySliderIndex(prev => Math.max(0, prev - 1));
+  };
+
+  const handleNextCategory = () => {
+    setCategorySliderIndex(prev => Math.min(maxIndex, prev + 1));
+  };
+
   // Detectar scroll para mostrar/esconder o rodapé fixo
   useEffect(() => {
     const handleScroll = () => {
@@ -199,28 +229,61 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Seletor de Categorias */}
+      {/* Seletor de Categorias com Slider */}
       <div className="bg-white p-6 rounded-lg border border-gray-300 shadow-sm">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Categorias</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {categories.map(category => (
+        <div className="relative">
+          {/* Botão Anterior */}
+          {canNavigate && categorySliderIndex > 0 && (
             <button
-              key={category.id}
-              onClick={() => handleCategoryChange(selectedCategory === category.id ? null : category.id)}
-              className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all duration-200 ${
-                selectedCategory === category.id
-                  ? 'border-[#5b3310] bg-[#dac4b4]/20 shadow-md'
-                  : 'border-gray-300 bg-white hover:border-[#5b3310] hover:bg-gray-50'
-              }`}
+              onClick={handlePrevCategory}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              aria-label="Categoria anterior"
             >
-              <span className="text-4xl mb-3">{category.icon || '📦'}</span>
-              <span className={`text-sm font-semibold text-center ${
-                selectedCategory === category.id ? 'text-[#3b200d]' : 'text-gray-700'
-              }`}>
-                {category.name}
-              </span>
+              <ChevronLeftIcon className="w-6 h-6 text-[#5b3310]" />
             </button>
-          ))}
+          )}
+
+          {/* Container do Slider */}
+          <div className={`overflow-hidden ${canNavigate ? 'mx-8' : ''}`}>
+            <div 
+              className="flex transition-transform duration-300 ease-in-out"
+              style={{
+                transform: canNavigate ? `translateX(-${categorySliderIndex * (100 / itemsPerView)}%)` : 'none'
+              }}
+            >
+              {categories.map(category => (
+                <div key={category.id} className="flex-shrink-0" style={{ width: `${100 / itemsPerView}%` }}>
+                  <button
+                    onClick={() => handleCategoryChange(selectedCategory === category.id ? null : category.id)}
+                    className={`w-full flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all duration-200 ${
+                      selectedCategory === category.id
+                        ? 'border-[#5b3310] bg-[#dac4b4]/20 shadow-md'
+                        : 'border-gray-300 bg-white hover:border-[#5b3310] hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-4xl mb-3">{category.icon || '📦'}</span>
+                    <span className={`text-sm font-semibold text-center ${
+                      selectedCategory === category.id ? 'text-[#3b200d]' : 'text-gray-700'
+                    }`}>
+                      {category.name}
+                    </span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Botão Próximo */}
+          {canNavigate && categorySliderIndex < maxIndex && (
+            <button
+              onClick={handleNextCategory}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-2 shadow-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              aria-label="Próxima categoria"
+            >
+              <ChevronRightIcon className="w-6 h-6 text-[#5b3310]" />
+            </button>
+          )}
         </div>
         {selectedCategory && (
           <button

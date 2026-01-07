@@ -16,6 +16,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     responsibleProfessionalId: null,
     responsibleProfessionalName: null,
     category: null,
+    image_url: null,
   });
 
   const [categories, setCategories] = useState<Array<{ id: number; name: string; icon: string | null }>>([]);
@@ -50,6 +51,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
         responsibleProfessionalId: service.responsibleProfessionalId ?? null,
         responsibleProfessionalName: service.responsibleProfessionalName ?? null,
         category: service.category ?? null,
+        image_url: service.image_url ?? null,
       });
     }
   }, [service]);
@@ -90,6 +92,30 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Nome do Serviço</label>
             <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]" required/>
+          </div>
+          <div>
+            <label htmlFor="image_url" className="block text-sm font-medium text-gray-300 mb-1">URL da Imagem (opcional)</label>
+            <input 
+              type="url" 
+              id="image_url" 
+              name="image_url" 
+              value={formData.image_url || ''} 
+              onChange={handleChange} 
+              placeholder="https://exemplo.com/imagem.jpg"
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
+            />
+            {formData.image_url && (
+              <div className="mt-2">
+                <img 
+                  src={formData.image_url} 
+                  alt="Preview" 
+                  className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
           </div>
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1">Descrição</label>
