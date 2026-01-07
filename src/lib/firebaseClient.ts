@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, UserCredential } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, UserCredential } from 'firebase/auth';
 
 const firebaseConfig = {
 	apiKey: "AIzaSyDSZoGmC0YHGIorbIM54DCzd2EKzpIvd1w",
@@ -15,39 +15,45 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
-export async function signInWithGoogleAndGetIdToken(): Promise<{ idToken: string; cred: UserCredential }> {
+/**
+ * Verifica se há resultado de redirect pendente (após redirecionamento do Google)
+ * Deve ser chamado quando a página carrega para verificar se o usuário acabou de fazer login
+ */
+export async function checkRedirectResult(): Promise<{ idToken: string; cred: UserCredential } | null> {
 	try {
 		console.log('[FirebaseClient] Verificando redirect result...');
-		// Verificar se há resultado de redirect pendente
 		const redirectResult = await getRedirectResult(auth);
 		if (redirectResult) {
-			console.log('[FirebaseClient] Redirect result encontrado');
+			console.log('[FirebaseClient] Redirect result encontrado, obtendo idToken...');
 			const idToken = await redirectResult.user.getIdToken();
+			console.log('[FirebaseClient] idToken obtido com sucesso');
 			return { idToken, cred: redirectResult };
 		}
-
-		console.log('[FirebaseClient] Iniciando signInWithPopup...');
-		const cred = await signInWithPopup(auth, provider);
-		console.log('[FirebaseClient] Popup concluído, obtendo idToken...');
-		const idToken = await cred.user.getIdToken();
-		console.log('[FirebaseClient] idToken obtido com sucesso');
-		return { idToken, cred };
+		console.log('[FirebaseClient] Nenhum redirect result encontrado');
+		return null;
 	} catch (error: any) {
-		console.error('[FirebaseClient] Erro no signInWithPopup:', {
+		console.error('[FirebaseClient] Erro ao verificar redirect result:', {
 			code: error?.code,
 			message: error?.message,
-			email: error?.email,
-			credential: error?.credential,
 		});
-		
-		// Se o popup foi bloqueado ou fechado, tentar redirect
-		if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/popup-closed-by-user') {
-			console.log('[FirebaseClient] Popup bloqueado/fechado, tentando redirect...');
-			await signInWithRedirect(auth, provider);
-			// O redirect vai redirecionar a página, então não retornamos nada aqui
-			throw new Error('Redirecionando para autenticação...');
-		}
-		
+		return null;
+	}
+}
+
+/**
+ * Inicia o processo de autenticação com Google usando redirect
+ * Redireciona a página para o Google, que depois redireciona de volta
+ */
+export async function signInWithGoogleRedirect(): Promise<void> {
+	try {
+		console.log('[FirebaseClient] Iniciando signInWithRedirect...');
+		await signInWithRedirect(auth, provider);
+		// A página será redirecionada, então não retornamos nada
+	} catch (error: any) {
+		console.error('[FirebaseClient] Erro no signInWithRedirect:', {
+			code: error?.code,
+			message: error?.message,
+		});
 		throw error;
 	}
 }

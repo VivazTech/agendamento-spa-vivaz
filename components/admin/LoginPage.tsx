@@ -12,16 +12,17 @@ const LoginPage: React.FC = () => {
     setError('');
     setIsLoading(true);
     try {
+      // O loginWithGoogle vai redirecionar a página para o Google
+      // Se retornar, significa que algo deu errado
       const ok = await loginWithGoogle();
-      if (ok) {
-        navigate('/admin');
-      } else {
-        setError('Não foi possível entrar com Google. Verifique se o email é autorizado ou se o popup não foi bloqueado.');
+      if (!ok) {
+        setError('Não foi possível iniciar o login. Tente novamente.');
+        setIsLoading(false);
       }
+      // Se ok for true, a página será redirecionada, então não precisamos fazer nada
     } catch (err: any) {
       console.error('[LoginPage] Error:', err);
       setError(err?.message || 'Erro ao fazer login. Tente novamente.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -57,7 +58,7 @@ const LoginPage: React.FC = () => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Entrando...
+              Redirecionando para Google...
             </>
           ) : (
             <>
