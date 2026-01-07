@@ -82,42 +82,29 @@ const BannerSlider: React.FC = () => {
 
   return (
     <div className="relative w-full mb-8 -mx-4 md:-mx-8 overflow-hidden">
-      {/* Container do Slider com transbordamento - permite overflow nas laterais */}
-      <div className="relative overflow-visible flex justify-center">
+      {/* Container do Slider - mostra apenas um banner por vez */}
+      <div className="relative">
         <div 
-          className="flex transition-transform duration-500 ease-in-out gap-2"
+          className="flex transition-transform duration-500 ease-in-out"
           style={{
-            transform: `translateX(calc(-${currentIndex * 100}% - ${currentIndex * 8}px))`,
+            transform: `translateX(-${currentIndex * 100}%)`,
           }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
           {banners.map((banner, index) => {
-            const isActive = index === currentIndex;
-            const isPrev = index === currentIndex - 1 || (currentIndex === 0 && index === banners.length - 1);
-            const isNext = index === currentIndex + 1 || (currentIndex === banners.length - 1 && index === 0);
-            
             return (
               <div
                 key={banner.id}
-                className="flex-shrink-0 relative"
-                style={{
-                  width: 'calc(100vw - 2rem)',
-                  maxWidth: '1200px',
-                }}
+                className="flex-shrink-0 w-full relative"
               >
                 <div
-                  className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ${
-                    isActive 
-                      ? 'shadow-2xl scale-100 z-10' 
-                      : (isPrev || isNext)
-                      ? 'opacity-70 scale-[0.92] z-0'
-                      : 'opacity-40 scale-[0.85] z-0'
-                  }`}
+                  className="relative rounded-2xl overflow-hidden cursor-pointer"
                   onClick={() => {
-                    setIsAutoPlaying(false);
-                    setCurrentIndex(index);
+                    if (banner.link_url) {
+                      handleBannerClick(banner);
+                    }
                   }}
                 >
                   <img
