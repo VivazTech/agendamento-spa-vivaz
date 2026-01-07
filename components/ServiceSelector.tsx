@@ -79,13 +79,13 @@ const ServiceItem: React.FC<{
                 {isSelected && service.selectedVariation ? (
                   // Mostrar variação selecionada
                   <div 
-                    className="bg-[#5b3310] border-2 border-[#5b3310] rounded-lg p-3 cursor-pointer hover:bg-[#6b4020] transition-colors"
+                    className="bg-[#5b3310] border-2 border-[#5b3310] rounded-lg px-3 py-1.5 cursor-pointer hover:bg-[#6b4020] transition-colors"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEditVariation?.();
                     }}
                   >
-                    <div className="text-xs text-white opacity-90 mb-2">Selecionado:</div>
+                    <div className="text-xs text-white opacity-90 mb-1">Selecionado:</div>
                     <div className="flex items-center gap-3">
                       <div className="text-sm text-white font-semibold">{service.selectedVariation.duration_minutes} min</div>
                       <div className="text-base text-white font-bold whitespace-nowrap">
@@ -442,23 +442,23 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
           {/* Container do Slider */}
           <div className={`overflow-hidden ${canNavigate ? 'mx-8' : ''}`}>
             <div 
-              className="flex transition-transform duration-300 ease-in-out gap-3"
+              className="flex transition-transform duration-300 ease-in-out gap-2"
               style={{
-                transform: canNavigate ? `translateX(calc(-${categorySliderIndex * (100 / itemsPerView)}% - ${categorySliderIndex * 0.75}rem))` : 'none'
+                transform: canNavigate ? `translateX(calc(-${categorySliderIndex * (100 / itemsPerView)}% - ${categorySliderIndex * 0.5}rem))` : 'none'
               }}
             >
               {categories.map(category => (
-                <div key={category.id} className="flex-shrink-0" style={{ width: `calc(${100 / itemsPerView}% - 0.5625rem)` }}>
+                <div key={category.id} className="flex-shrink-0" style={{ width: `calc(${100 / itemsPerView}% - 0.375rem)` }}>
                   <button
                     onClick={() => handleCategoryChange(selectedCategory === category.id ? null : category.id)}
-                    className={`w-full h-[120px] flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 ${
+                    className={`w-full h-[120px] flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200 ${
                       selectedCategory === category.id
                         ? 'border-[#5b3310] bg-[#dac4b4]/20 shadow-md'
                         : 'border-gray-300 bg-white hover:border-[#5b3310] hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-3xl mb-2">{category.icon || '📦'}</span>
-                    <span className={`text-xs font-semibold text-center leading-tight px-1 ${
+                    <span className="text-2xl mb-1.5">{category.icon || '📦'}</span>
+                    <span className={`text-[10px] font-semibold text-center leading-tight px-1 ${
                       selectedCategory === category.id ? 'text-[#3b200d]' : 'text-gray-700'
                     }`}>
                       {category.name}

@@ -93,6 +93,12 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
       newErrors.phone = "Telefone inválido. Use o formato (XX) XXXXX-XXXX";
     }
     
+    if (!formData.room_number || formData.room_number.trim().length === 0) {
+      newErrors.room_number = "Acomodação é obrigatória";
+    } else if (formData.room_number.length < 4) {
+      newErrors.room_number = "Acomodação deve ter 4 números";
+    }
+    
     setErrors(newErrors);
     return { isValid: Object.keys(newErrors).length === 0, errors: newErrors };
   };
@@ -173,7 +179,7 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
         </div>
         <div>
-          <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-1">Acomodações (opcional)</label>
+          <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-1">Acomodações <span className="text-red-600">*</span></label>
           <input 
             type="text" 
             id="room_number" 
@@ -197,8 +203,11 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
             }}
             maxLength={4}
             placeholder="1234"
-            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310]" 
+            className={`w-full bg-gray-50 border rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310] ${
+              errors.room_number ? 'border-red-500' : 'border-gray-300'
+            }`}
           />
+          {errors.room_number && <p className="text-red-600 text-sm mt-1">{errors.room_number}</p>}
         </div>
         <div>
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>

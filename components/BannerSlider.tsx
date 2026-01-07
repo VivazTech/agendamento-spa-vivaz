@@ -14,6 +14,8 @@ const BannerSlider: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   // Buscar banners do banco
   useEffect(() => {
@@ -49,16 +51,47 @@ const BannerSlider: React.FC = () => {
     }
   };
 
+  // Handlers para touch/swipe
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && banners.length > 0) {
+      setIsAutoPlaying(false);
+      setCurrentIndex((prev) => (prev + 1) % banners.length);
+    }
+    if (isRightSwipe && banners.length > 0) {
+      setIsAutoPlaying(false);
+      setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
+    }
+  };
+
   return (
     <div className="relative w-full mb-8 -mx-4 md:-mx-8 overflow-hidden">
       {/* Container do Slider com transbordamento - permite overflow nas laterais */}
       <div className="relative overflow-visible">
         <div 
-          className="flex transition-transform duration-500 ease-in-out"
+          className="flex transition-transform duration-500 ease-in-out gap-2"
           style={{
-            transform: `translateX(calc(50vw - 50% - ${currentIndex * 100}% - ${currentIndex * 8}px))`,
-            gap: '8px'
+            transform: `translateX(calc(50% - 50vw + ${(currentIndex * -100)}% - ${currentIndex * 8}px))`,
           }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
         >
           {banners.map((banner, index) => {
             const isActive = index === currentIndex;
@@ -70,7 +103,7 @@ const BannerSlider: React.FC = () => {
                 key={banner.id}
                 className="flex-shrink-0 relative"
                 style={{
-                  width: 'calc(100vw - 4rem)',
+                  width: 'calc(100vw - 2rem)',
                   maxWidth: '1200px',
                 }}
               >

@@ -207,9 +207,11 @@ const App: React.FC = () => {
             path="/"
             element={
               <>
-                <div className="w-full pt-4 -mx-4 md:-mx-8">
-                  <BannerSlider />
-                </div>
+                {step === 'services' && (
+                  <div className="w-full pt-4 -mx-4 md:-mx-8">
+                    <BannerSlider />
+                  </div>
+                )}
                 {step !== 'confirmation' && <StepIndicator currentStep={step} />}
                 <div className="mt-8">
                   {renderStep()}

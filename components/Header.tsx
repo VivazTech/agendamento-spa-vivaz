@@ -9,18 +9,18 @@ const Header: React.FC = () => {
   return (
     <header className="bg-white/90 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-300 shadow-sm">
       <div className="container mx-auto flex items-center justify-between p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <img 
             src={logoPath} 
             alt="SPA Vivaz Cataratas" 
-            className="h-6 w-auto object-contain"
+            className="h-5 w-auto object-contain md:h-6"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
             }}
           />
           <h1 className="text-sm font-normal tracking-wider text-gray-400">
-            Agendamento Online <br className="hidden md:block" />
+            <span className="hidden md:inline">Agendamento Online <br /></span>
             SPA Vivaz Cataratas
           </h1>
         </div>
