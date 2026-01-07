@@ -21,6 +21,33 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
+// IMPORTANTE: Processar redirect result imediatamente quando o módulo carrega
+// Isso garante que o Firebase processe o redirect antes de qualquer outra coisa
+let redirectResultPromise: Promise<UserCredential | null> | null = null;
+
+// Função para processar redirect result imediatamente
+const processRedirectImmediately = async (): Promise<UserCredential | null> => {
+	try {
+		console.log('[FirebaseClient] Processando redirect imediatamente ao carregar módulo...');
+		const result = await getRedirectResult(auth);
+		if (result) {
+			console.log('[FirebaseClient] Redirect result encontrado imediatamente!', {
+				email: result.user.email,
+				uid: result.user.uid,
+			});
+		} else {
+			console.log('[FirebaseClient] Nenhum redirect result encontrado imediatamente');
+		}
+		return result;
+	} catch (error: any) {
+		console.error('[FirebaseClient] Erro ao processar redirect imediatamente:', error);
+		return null;
+	}
+};
+
+// Processar imediatamente quando o módulo carrega
+redirectResultPromise = processRedirectImmediately();
+
 /**
  * Verifica se há resultado de redirect pendente (após redirecionamento do Google)
  * Deve ser chamado quando a página carrega para verificar se o usuário acabou de fazer login
@@ -30,7 +57,7 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 		console.log('[FirebaseClient] Verificando redirect result...');
 		console.log('[FirebaseClient] URL atual:', window.location.href);
 		console.log('[FirebaseClient] Auth instance:', auth);
-		console.log('[FirebaseClient] Auth currentUser antes do getRedirectResult:', auth.currentUser);
+		console.log('[FirebaseClient] Auth currentUser:', auth.currentUser);
 		
 		// Verificar se há parâmetros na URL que indicam redirect
 		const urlParams = new URLSearchParams(window.location.search);
@@ -40,7 +67,19 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 		console.log('[FirebaseClient] URL search:', window.location.search);
 		console.log('[FirebaseClient] URL hash:', urlHash.substring(0, 200));
 		
-		// Tentar getRedirectResult primeiro - IMPORTANTE: deve ser chamado ANTES de qualquer outra coisa
+		// Primeiro, verificar se já processamos o redirect imediatamente
+		if (redirectResultPromise) {
+			console.log('[FirebaseClient] Verificando resultado do processamento imediato...');
+			const immediateResult = await redirectResultPromise;
+			if (immediateResult) {
+				console.log('[FirebaseClient] Redirect result encontrado do processamento imediato!');
+				const idToken = await immediateResult.user.getIdToken();
+				return { idToken, cred: immediateResult };
+			}
+		}
+		
+		// Se não encontrou no processamento imediato, tentar getRedirectResult novamente
+		console.log('[FirebaseClient] Tentando getRedirectResult novamente...');
 		const redirectResult = await getRedirectResult(auth);
 		console.log('[FirebaseClient] getRedirectResult retornou:', redirectResult ? 'resultado encontrado' : 'null');
 		
@@ -55,15 +94,10 @@ export async function checkRedirectResult(): Promise<{ idToken: string; cred: Us
 			return { idToken, cred: redirectResult };
 		}
 		
-		// Se getRedirectResult não funcionou, aguardar um pouco e verificar currentUser
-		// O Firebase pode precisar de tempo para processar o redirect
-		console.log('[FirebaseClient] getRedirectResult retornou null, aguardando e verificando currentUser...');
-		await new Promise(resolve => setTimeout(resolve, 1000)); // Aguardar 1 segundo
-		
-		// Verificar currentUser novamente após aguardar
-		console.log('[FirebaseClient] Auth currentUser após aguardar:', auth.currentUser);
+		// Se getRedirectResult não funcionou, verificar currentUser
+		console.log('[FirebaseClient] getRedirectResult retornou null, verificando currentUser...');
 		if (auth.currentUser) {
-			console.log('[FirebaseClient] currentUser encontrado após aguardar!', {
+			console.log('[FirebaseClient] currentUser encontrado!', {
 				email: auth.currentUser.email,
 				uid: auth.currentUser.uid,
 			});
