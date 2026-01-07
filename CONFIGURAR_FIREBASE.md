@@ -1,14 +1,20 @@
 # Configuração do Firebase para Autenticação Google
 
-## Problema: Popup fecha imediatamente
+## ⚠️ IMPORTANTE: Habilitar método Google no Firebase Console
 
-Se o popup do Google abre e fecha imediatamente, geralmente é porque:
+**O erro `auth/operation-not-allowed` significa que o método Google não está habilitado!**
 
-1. **Domínio não autorizado no Firebase Console**
-2. **Configuração incorreta do authDomain**
-3. **Popup bloqueado pelo navegador**
+### Passo 1: Habilitar Google como método de autenticação
 
-## Solução: Autorizar domínios no Firebase Console
+1. Acesse: https://console.firebase.google.com/
+2. Selecione o projeto: `agendamento-spa-vivaz-cat`
+3. Vá em **Authentication** → **Sign-in method**
+4. Clique em **Google**
+5. **Ative o toggle** para habilitar o método Google
+6. Configure o **Support email** (pode ser o email do projeto)
+7. Clique em **Save**
+
+### Passo 2: Autorizar domínios no Firebase Console
 
 ### Passo 1: Acessar Firebase Console
 1. Acesse: https://console.firebase.google.com/
@@ -56,7 +62,22 @@ Para testar localmente, certifique-se de que:
 1. O domínio `localhost` está autorizado no Firebase Console
 2. As variáveis de ambiente estão configuradas no arquivo `.env.local`
 
-## Solução alternativa: Usar redirect ao invés de popup
+## Método de autenticação: Redirect (não popup)
 
-Se o popup continuar falhando, o código já tem fallback para usar `signInWithRedirect`, que redireciona a página inteira ao invés de abrir um popup.
+O código agora usa **`signInWithRedirect`** ao invés de popup, o que é mais confiável e funciona melhor em diferentes navegadores.
+
+### Como funciona:
+
+1. Usuário clica em "Entrar com Google"
+2. A página inteira é redirecionada para o Google
+3. Usuário seleciona a conta e autoriza
+4. Google redireciona de volta para a aplicação
+5. O código verifica o resultado e processa o login automaticamente
+
+### Vantagens do redirect:
+
+- ✅ Não depende de popups (que podem ser bloqueados)
+- ✅ Funciona melhor em dispositivos móveis
+- ✅ Mais confiável que popup
+- ✅ Não precisa autorizar domínios especiais (apenas o domínio principal)
 
