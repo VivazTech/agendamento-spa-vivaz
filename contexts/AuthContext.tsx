@@ -59,8 +59,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         
         // Também configurar listener para mudanças futuras
-        const { onAuthStateChange } = await import('../src/lib/firebaseClient');
-        onAuthStateChange(async (firebaseUser) => {
+        const { onAuthStateChange: setupAuthListener } = await import('../src/lib/firebaseClient');
+        setupAuthListener(async (firebaseUser) => {
           if (firebaseUser && !hasProcessedRedirect.current) {
             console.log('[AuthContext] Usuário autenticado no Firebase detectado via onAuthStateChange');
             try {
