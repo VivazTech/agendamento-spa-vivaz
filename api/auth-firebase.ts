@@ -77,7 +77,7 @@ export default async function handler(req: any, res: any) {
 		// Autorizar por tabela admins (email precisa existir e estar ativo)
 		const { data: admin, error } = await supabase
 			.from('admins')
-			.select('id, username, name, email, is_active')
+			.select('id, username, name, email, role, is_active')
 			.eq('email', email)
 			.eq('is_active', true)
 			.single();
@@ -95,6 +95,7 @@ export default async function handler(req: any, res: any) {
 				username: admin.username || email,
 				name: admin.name || name,
 				email: admin.email || email,
+				role: admin.role || 'colaborador', // Default para colaborador se não tiver role
 				uid,
 				provider: 'google',
 			},

@@ -5,12 +5,14 @@ interface Admin {
   username: string;
   name: string;
   email?: string;
+  role?: 'admin' | 'gerente' | 'colaborador';
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
   admin: Admin | null;
-  loginWithGoogle: () => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
+  loginWithGoogle: () => Promise<boolean>; // Mantido para compatibilidade, mas não será usado
   logout: () => void;
   isLoading: boolean;
 }
@@ -179,6 +181,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkAuth();
   }, []);
 
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      console.log('[AuthContext] Iniciando login com username/senha');
+      
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+      
+      if (data.ok && data.admin) {
+        setIsAuthenticated(true);
+        setAdmin(data.admin);
+        localStorage.setItem('admin_authenticated', 'true');
+        localStorage.setItem('admin_data', JSON.stringify(data.admin));
+        console.log('[AuthContext] Login bem-sucedido');
+        return true;
+      } else {
+        console.error('[AuthContext] Login falhou:', data.error);
+        return false;
+      }
+    } catch (error: any) {
+      console.error('[AuthContext] Erro ao fazer login:', error);
+      return false;
+    }
+  };
+
   const loginWithGoogle = async (): Promise<boolean> => {
     try {
       console.log('[AuthContext] Iniciando login com Google via redirect');
@@ -209,7 +240,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, admin, loginWithGoogle, logout, isLoading }}>
+    <AuthContext.Provider value={{ isAuthenticated, admin, login, loginWithGoogle, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

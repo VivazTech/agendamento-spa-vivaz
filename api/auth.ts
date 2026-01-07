@@ -477,7 +477,95 @@ export default async function handler(req: any, res: any) {
 			}
 		}
 
-		res.setHeader('Allow', 'GET, PUT, PATCH, DELETE');
+		// Endpoint para login com username e senha
+		if (req.method === 'POST') {
+			try {
+				const raw = req.body ?? {};
+				const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
+				const { username, password } = (parsed || {}) as {
+					username?: string;
+					password?: string;
+				};
+
+				if (!username || !password) {
+					return res.status(400).json({
+						ok: false,
+						error: 'username e password são obrigatórios',
+					});
+				}
+
+				const supabaseUrl =
+					process.env.SUPABASE_URL ||
+					process.env.VITE_SUPABASE_URL;
+				const supabaseKey =
+					process.env.SUPABASE_SERVICE_ROLE_KEY ||
+					process.env.VITE_SUPABASE_ANON_KEY;
+
+				if (!supabaseUrl || !supabaseKey) {
+					return res.status(500).json({
+						ok: false,
+						error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
+					});
+				}
+
+				const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+
+				// Buscar admin por username
+				const { data: admin, error } = await supabase
+					.from('admins')
+					.select('id, username, name, email, password_hash, role, is_active')
+					.eq('username', username)
+					.single();
+
+				if (error || !admin) {
+					return res.status(401).json({
+						ok: false,
+						error: 'Usuário ou senha inválidos',
+					});
+				}
+
+				// Verificar se está ativo
+				if (!admin.is_active) {
+					return res.status(403).json({
+						ok: false,
+						error: 'Usuário desativado',
+					});
+				}
+
+				// Verificar senha
+				if (!verifyPassword(password, admin.password_hash)) {
+					return res.status(401).json({
+						ok: false,
+						error: 'Usuário ou senha inválidos',
+					});
+				}
+
+				// Atualizar último login
+				await supabase
+					.from('admins')
+					.update({ last_login: new Date().toISOString() })
+					.eq('id', admin.id);
+
+				// Retornar dados do admin (sem password_hash)
+				return res.status(200).json({
+					ok: true,
+					admin: {
+						id: admin.id,
+						username: admin.username,
+						name: admin.name,
+						email: admin.email,
+						role: admin.role || 'colaborador',
+					},
+				});
+			} catch (err: any) {
+				return res.status(500).json({
+					ok: false,
+					error: err?.message || 'Erro inesperado',
+				});
+			}
+		}
+
+		res.setHeader('Allow', 'GET, POST, PUT, PATCH, DELETE');
 		return res.status(405).json({ ok: false, error: 'Método não permitido' });
 	} catch (err: any) {
 		console.error('[AUTH] Erro não tratado no handler:', {
