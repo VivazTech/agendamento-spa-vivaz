@@ -9,6 +9,10 @@ interface SupabaseAuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  sendMagicLink: (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
+  updateUser: (updates: { email?: string; password?: string; data?: any }) => Promise<{ error: AuthError | null }>;
 }
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(undefined);
@@ -100,6 +104,55 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      return { error };
+    } catch (error) {
+      console.error('[SupabaseAuth] Erro inesperado ao recuperar senha:', error);
+      return { error: error as AuthError };
+    }
+  };
+
+  const sendMagicLink = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      return { error };
+    } catch (error) {
+      console.error('[SupabaseAuth] Erro inesperado ao enviar magic link:', error);
+      return { error: error as AuthError };
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      return { error };
+    } catch (error) {
+      console.error('[SupabaseAuth] Erro inesperado ao atualizar senha:', error);
+      return { error: error as AuthError };
+    }
+  };
+
+  const updateUser = async (updates: { email?: string; password?: string; data?: any }) => {
+    try {
+      const { error } = await supabase.auth.updateUser(updates);
+      return { error };
+    } catch (error) {
+      console.error('[SupabaseAuth] Erro inesperado ao atualizar usuário:', error);
+      return { error: error as AuthError };
+    }
+  };
+
   return (
     <SupabaseAuthContext.Provider
       value={{
@@ -109,6 +162,10 @@ export const SupabaseAuthProvider: React.FC<{ children: ReactNode }> = ({ childr
         signIn,
         signUp,
         signOut,
+        resetPassword,
+        sendMagicLink,
+        updatePassword,
+        updateUser,
       }}
     >
       {children}

@@ -160,7 +160,7 @@ const Login: React.FC = () => {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <button
               type="button"
               onClick={() => {
@@ -174,6 +174,17 @@ const Login: React.FC = () => {
                 ? 'Já tem uma conta? Faça login'
                 : 'Não tem uma conta? Criar conta'}
             </button>
+            {!isSignUp && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-sm text-gray-600 hover:text-[#5b3310] underline"
+                >
+                  Esqueceu sua senha?
+                </button>
+              </div>
+            )}
           </div>
         </form>
       </div>

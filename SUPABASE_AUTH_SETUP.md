@@ -26,8 +26,10 @@ Adicione as seguintes URLs (uma por linha):
 ```
 http://localhost:5173/*
 http://localhost:5173/auth/callback
+http://localhost:5173/reset-password
 https://SEU_DOMINIO_VERCEL.com.br/*
 https://SEU_DOMINIO_VERCEL.com.br/auth/callback
+https://SEU_DOMINIO_VERCEL.com.br/reset-password
 ```
 
 **Importante**: Substitua `SEU_DOMINIO_VERCEL.com.br` pelo domínio real do seu projeto no Vercel.

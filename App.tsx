@@ -18,6 +18,8 @@ import ClientLoginPage from './components/client/ClientLoginPage';
 import ClientBookingsPage from './components/client/ClientBookingsPage';
 import Login from './src/pages/Login';
 import Dashboard from './src/pages/Dashboard';
+import ForgotPassword from './src/pages/ForgotPassword';
+import ResetPassword from './src/pages/ResetPassword';
 
 type Step = 'services' | 'datetime' | 'details' | 'confirmation';
 
@@ -203,6 +205,8 @@ const App: React.FC = () => {
       <main className="container mx-auto p-4 md:p-8 flex-grow">
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<SupabaseProtectedRoute><Dashboard /></SupabaseProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="/login-cliente" element={<ClientLoginPage />} />
