@@ -520,6 +520,7 @@ export default async function handler(req: any, res: any) {
 				request_id?: string; // ID da solicitação de reagendamento
 				response?: 'accept' | 'reject'; // Resposta à solicitação
 				response_message?: string; // Mensagem opcional ao rejeitar
+				responded_by?: string; // ID do admin que respondeu (opcional)
 			};
 
 			const action = (body.action || '').toLowerCase();
