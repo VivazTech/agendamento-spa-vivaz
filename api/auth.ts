@@ -66,13 +66,14 @@ export default async function handler(req: any, res: any) {
 			try {
 			const raw = req.body ?? {};
 			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { id, username, password, name, email, is_active } = (parsed || {}) as {
+			const { id, username, password, name, email, is_active, role } = (parsed || {}) as {
 				id?: string;
 				username?: string;
 				password?: string;
 				name?: string;
 				email?: string;
 				is_active?: boolean;
+				role?: 'admin' | 'gerente' | 'colaborador';
 			};
 
 			const supabaseUrl =
@@ -107,23 +108,55 @@ export default async function handler(req: any, res: any) {
 					is_active: typeof is_active === 'boolean' ? is_active : true,
 				};
 
+				// Se forneceu role, atualizar também
+				if (role && ['admin', 'gerente', 'colaborador'].includes(role)) {
+					updateData.role = role;
+				}
+
 				// Se forneceu senha, atualizar também
 				if (password) {
 					updateData.password_hash = hashPassword(password);
 				}
 
-				const { data: updatedAdmin, error: updateError } = await supabase
+				// Tentar atualizar com role primeiro, se falhar, tentar sem role (compatibilidade)
+				let updatedAdmin: any = null;
+				let updateError: any = null;
+
+				const { data: adminWithRole, error: errorWithRole } = await supabase
 					.from('admins')
 					.update(updateData)
 					.eq('id', id)
-					.select('id, username, name, email, is_active')
+					.select('id, username, name, email, role, is_active')
 					.single();
+
+				if (errorWithRole && errorWithRole.code === 'PGRST116') {
+					// Campo role não existe, atualizar sem role
+					const updateDataWithoutRole = { ...updateData };
+					delete updateDataWithoutRole.role;
+					const { data: adminWithoutRole, error: errorWithoutRole } = await supabase
+						.from('admins')
+						.update(updateDataWithoutRole)
+						.eq('id', id)
+						.select('id, username, name, email, is_active')
+						.single();
+					
+					updatedAdmin = adminWithoutRole;
+					updateError = errorWithoutRole;
+				} else {
+					updatedAdmin = adminWithRole;
+					updateError = errorWithRole;
+				}
 
 				if (updateError) {
 					return res.status(500).json({
 						ok: false,
 						error: updateError.message,
 					});
+				}
+
+				// Se não retornou role mas tentou atualizar, adicionar role padrão na resposta
+				if (updatedAdmin && !updatedAdmin.role && role) {
+					updatedAdmin.role = role;
 				}
 
 				return res.status(200).json({
@@ -157,18 +190,46 @@ export default async function handler(req: any, res: any) {
 			// Criar hash da senha
 			const passwordHash = hashPassword(password);
 
+			// Validar role se fornecido
+			const validRole = role && ['admin', 'gerente', 'colaborador'].includes(role) 
+				? role 
+				: 'colaborador'; // Default para colaborador
+
 			// Inserir novo admin
-			const { data: newAdmin, error: insertError } = await supabase
+			const insertData: any = {
+				username,
+				password_hash: passwordHash,
+				name,
+				email: email || null,
+				role: validRole,
+				is_active: true,
+			};
+
+			// Tentar inserir com role primeiro, se falhar, tentar sem role (compatibilidade)
+			let newAdmin: any = null;
+			let insertError: any = null;
+
+			const { data: adminWithRole, error: errorWithRole } = await supabase
 				.from('admins')
-				.insert({
-					username,
-					password_hash: passwordHash,
-					name,
-					email: email || null,
-					is_active: true,
-				})
-				.select('id, username, name, email, is_active')
+				.insert(insertData)
+				.select('id, username, name, email, role, is_active')
 				.single();
+
+			if (errorWithRole && errorWithRole.code === 'PGRST116') {
+				// Campo role não existe, inserir sem role
+				delete insertData.role;
+				const { data: adminWithoutRole, error: errorWithoutRole } = await supabase
+					.from('admins')
+					.insert(insertData)
+					.select('id, username, name, email, is_active')
+					.single();
+				
+				newAdmin = adminWithoutRole;
+				insertError = errorWithoutRole;
+			} else {
+				newAdmin = adminWithRole;
+				insertError = errorWithRole;
+			}
 
 			if (insertError) {
 				return res.status(500).json({

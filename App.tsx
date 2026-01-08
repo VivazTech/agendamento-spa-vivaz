@@ -10,6 +10,7 @@ import UserDetailsForm from './components/UserDetailsForm';
 import ConfirmationPage from './components/ConfirmationPage';
 import Admin from './components/admin/Admin';
 import ProtectedRoute from './components/admin/ProtectedRoute';
+import CreateAdminAccount from './components/admin/CreateAdminAccount';
 import SupabaseProtectedRoute from './src/components/SupabaseProtectedRoute';
 import ProfilesList from './components/ProfilesList';
 import TestSupabaseConnection from './components/TestSupabaseConnection';
@@ -208,6 +209,7 @@ const App: React.FC = () => {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<SupabaseProtectedRoute><Dashboard /></SupabaseProtectedRoute>} />
+          <Route path="/admin/create-account" element={<CreateAdminAccount />} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="/login-cliente" element={<ClientLoginPage />} />
           <Route path="/meus-agendamentos" element={<ClientBookingsPage />} />
