@@ -5,8 +5,8 @@ type RescheduleRequest = {
   id: string;
   requested_date: string;
   requested_time: string;
-  current_date: string;
-  current_time: string;
+  original_date: string;
+  original_time: string;
   status: 'pending' | 'accepted' | 'rejected';
   response_message?: string | null;
   created_at: string;

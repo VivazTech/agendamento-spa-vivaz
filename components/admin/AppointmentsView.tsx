@@ -8,8 +8,8 @@ type RescheduleRequest = {
   id: string;
   requested_date: string;
   requested_time: string;
-  current_date: string;
-  current_time: string;
+  original_date: string;
+  original_time: string;
   status: 'pending' | 'accepted' | 'rejected';
   response_message?: string | null;
   created_at: string;
@@ -304,7 +304,7 @@ const AppointmentsView: React.FC = () => {
                           ⏳ Solicitação de Troca de Horário
                         </p>
                         <p className="text-xs text-yellow-700 mb-1">
-                          <span className="font-medium">Horário atual:</span> {new Date(b.reschedule_request.current_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} às {b.reschedule_request.current_time.slice(0,5)}
+                          <span className="font-medium">Horário atual:</span> {new Date(b.reschedule_request.original_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} às {b.reschedule_request.original_time.slice(0,5)}
                         </p>
                         <p className="text-xs text-yellow-700">
                           <span className="font-medium">Novo horário solicitado:</span> {new Date(b.reschedule_request.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} às {b.reschedule_request.requested_time.slice(0,5)}
