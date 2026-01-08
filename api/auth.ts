@@ -235,9 +235,16 @@ export default async function handler(req: any, res: any) {
 			}
 
 			if (insertError) {
+				console.error('[AUTH] Erro ao inserir admin:', {
+					message: insertError.message,
+					code: insertError.code,
+					details: insertError.details,
+					hint: insertError.hint,
+				});
 				return res.status(500).json({
 					ok: false,
-					error: insertError.message,
+					error: insertError.message || 'Erro ao criar admin',
+					code: insertError.code,
 				});
 			}
 
