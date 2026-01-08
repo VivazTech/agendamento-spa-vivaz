@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { AdminView } from './Admin';
 import { CalendarDaysIcon, ScissorsIcon, UserIcon, CalendarIcon, UserCogIcon } from '../icons';
 
@@ -25,6 +27,14 @@ const NavItem: React.FC<{
 );
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
+  const { logout, admin } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/admin', { replace: true });
+  };
+
   return (
     <div className="bg-white p-4 rounded-xl border border-gray-300 shadow-sm flex flex-col h-full">
       <nav className="flex md:flex-col justify-around md:justify-start md:space-y-2 flex-grow">
@@ -85,6 +95,28 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
           onClick={() => setActiveView('banners')}
         />
       </nav>
+      
+      {/* Informações do usuário e botão de logout */}
+      <div className="mt-auto pt-4 border-t border-gray-200">
+        {admin && (
+          <div className="mb-3 px-3 py-2 text-sm text-gray-600">
+            <p className="font-medium text-gray-900 truncate">{admin.name}</p>
+            <p className="text-xs text-gray-500 truncate">{admin.username}</p>
+            {admin.role && (
+              <p className="text-xs text-gray-400 capitalize">{admin.role}</p>
+            )}
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-colors duration-200 text-red-600 hover:bg-red-50 font-medium"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span className="hidden md:inline">Sair</span>
+        </button>
+      </div>
     </div>
   );
 };
