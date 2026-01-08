@@ -51,7 +51,6 @@ const AppointmentsView: React.FC = () => {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completingId, setCompletingId] = useState<string | null>(null);
   const [respondingToRequest, setRespondingToRequest] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,36 +100,6 @@ const AppointmentsView: React.FC = () => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo]);
-
-  const markAsCompleted = async (bookingId: string) => {
-    if (!confirm('Deseja marcar este atendimento como concluído? Isso enviará mensagens de confirmação via WhatsApp para o cliente e o profissional.')) {
-      return;
-    }
-
-    setCompletingId(bookingId);
-    try {
-      const res = await fetch('/api/bookings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          booking_id: bookingId,
-          status: 'completed',
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || 'Erro ao marcar como concluído');
-      }
-
-      alert('Atendimento marcado como concluído! As mensagens foram enviadas via WhatsApp.');
-      load(); // Recarregar lista
-    } catch (e: any) {
-      alert(e?.message || 'Erro ao marcar atendimento como concluído');
-    } finally {
-      setCompletingId(null);
-    }
-  };
 
   const respondToRescheduleRequest = async (requestId: string, response: 'accept' | 'reject', responseMessage?: string) => {
     setRespondingToRequest(requestId);
@@ -333,26 +302,6 @@ const AppointmentsView: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
-                  <div className="border-t border-gray-300 my-3 pt-3">
-                    <button
-                      onClick={() => markAsCompleted(b.booking_id)}
-                      disabled={completingId === b.booking_id}
-                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded transition-colors flex items-center justify-center gap-2"
-                    >
-                      {completingId === b.booking_id ? (
-                        <>
-                          <span className="animate-spin">⏳</span>
-                          <span>Processando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>✅</span>
-                          <span>Marcar como Concluído</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
               ))}
             </div>
