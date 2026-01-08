@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 
 interface DateTimePickerProps {
@@ -6,6 +6,15 @@ interface DateTimePickerProps {
   onDateTimeSelect: (date: Date, time: string) => void;
   serviceDuration: number;
 }
+
+type BusinessHour = {
+  id: string;
+  day_of_week: number;
+  period: 'morning' | 'afternoon' | 'evening';
+  is_active: boolean;
+  start_time: string;
+  end_time: string;
+};
 
 const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => void }> = ({ selectedDate, onDateSelect }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -65,20 +74,27 @@ const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => voi
   );
 };
 
-const generateTimeSlots = (serviceDuration: number): { morning: string[], afternoon: string[], evening: string[] } => {
-    // Horários de funcionamento
-    const startHour = 9; // 9h
-    const endHour = 20; // 20h (8h da noite)
+const generateTimeSlotsForPeriod = (
+  startTime: string, 
+  endTime: string, 
+  serviceDuration: number
+): string[] => {
+    const slots: string[] = [];
+    
+    // Converter horários para minutos
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    
+    const startTimeInMinutes = startHour * 60 + startMin;
+    const endTimeInMinutes = endHour * 60 + endMin;
     
     // Intervalo entre horários: duração do serviço + margem de 15 minutos
     const interval = serviceDuration + 15;
     
-    const slots: string[] = [];
-    let currentTime = startHour * 60; // Começar às 9h (em minutos)
-    const endTime = endHour * 60; // Terminar às 20h (em minutos)
+    let currentTime = startTimeInMinutes;
     
     // Gerar horários considerando a duração do serviço
-    while (currentTime + serviceDuration <= endTime) {
+    while (currentTime + serviceDuration <= endTimeInMinutes) {
         const hour = Math.floor(currentTime / 60);
         const minute = currentTime % 60;
         const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -88,30 +104,56 @@ const generateTimeSlots = (serviceDuration: number): { morning: string[], aftern
         currentTime += interval;
     }
     
-    // Separar por períodos
-    const morning = slots.filter(time => {
-        const hour = parseInt(time.split(':')[0]);
-        return hour >= 9 && hour < 12;
-    });
-    
-    const afternoon = slots.filter(time => {
-        const hour = parseInt(time.split(':')[0]);
-        return hour >= 12 && hour < 18;
-    });
-    
-    const evening = slots.filter(time => {
-        const hour = parseInt(time.split(':')[0]);
-        return hour >= 18 && hour < 20;
-    });
-    
-    return { morning, afternoon, evening };
+    return slots;
 };
 
 const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const availableSlots = useMemo(() => generateTimeSlots(serviceDuration), [serviceDuration]);
+  // Buscar horários de funcionamento
+  useEffect(() => {
+    const fetchBusinessHours = async () => {
+      try {
+        const res = await fetch('/api/business-hours');
+        const data = await res.json();
+        if (res.ok && data.hours) {
+          setBusinessHours(data.hours);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar horários de funcionamento:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBusinessHours();
+  }, []);
+
+  // Gerar slots baseados nos horários configurados e no dia da semana selecionado
+  const availableSlots = useMemo(() => {
+    const dayOfWeek = selectedDate.getDay(); // 0=Domingo, 1=Segunda, etc.
+    const dayHours = businessHours.filter(h => h.day_of_week === dayOfWeek && h.is_active);
+    
+    const morning: string[] = [];
+    const afternoon: string[] = [];
+    const evening: string[] = [];
+    
+    dayHours.forEach(hour => {
+      const slots = generateTimeSlotsForPeriod(hour.start_time, hour.end_time, serviceDuration);
+      
+      if (hour.period === 'morning') {
+        morning.push(...slots);
+      } else if (hour.period === 'afternoon') {
+        afternoon.push(...slots);
+      } else if (hour.period === 'evening') {
+        evening.push(...slots);
+      }
+    });
+    
+    return { morning, afternoon, evening };
+  }, [selectedDate, serviceDuration, businessHours]);
   
   const handleNext = () => {
     if (selectedDate && selectedTime) {
