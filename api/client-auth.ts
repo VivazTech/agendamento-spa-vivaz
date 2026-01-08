@@ -6,15 +6,23 @@
 import { Client } from 'pg';
 
 async function getClient() {
-	const databaseUrl = process.env.DATABASE_URL;
+	// Tentar várias variáveis de ambiente para connection string PostgreSQL
+	const databaseUrl = 
+		process.env.DATABASE_URL ||
+		process.env.POSTGRES_URL ||
+		process.env.POSTGRES_PRISMA_URL ||
+		process.env.POSTGRES_URL_NON_POOLING;
+
 	if (!databaseUrl) {
-		throw new Error('DATABASE_URL não configurada');
+		throw new Error('DATABASE_URL ou POSTGRES_URL não configuradas. Configure uma dessas variáveis no Vercel (Settings → Environment Variables).');
 	}
+
 	// Permitir desativar verificação de certificado para debug/ambientes com cadeia self-signed
 	if (process.env.DB_SSL_NO_VERIFY === '1') {
 		// eslint-disable-next-line no-process-env
 		process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 	}
+	
 	const client = new Client({
 		connectionString: databaseUrl,
 		ssl: { rejectUnauthorized: false },
