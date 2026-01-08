@@ -161,6 +161,13 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
     }
   };
 
+  // Verificar se o dia selecionado está fechado
+  const isDayClosed = useMemo(() => {
+    const dayOfWeek = selectedDate.getDay();
+    const dayHours = businessHours.filter(h => h.day_of_week === dayOfWeek && h.is_active);
+    return dayHours.length === 0;
+  }, [selectedDate, businessHours]);
+
   return (
     <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Escolha a Data e Hora</h2>
@@ -169,33 +176,50 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
           <Calendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
         </div>
         <div className="max-h-[400px] overflow-y-auto pr-2">
-            <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
-            {Object.entries(availableSlots).map(([period, slots]) => (
-                <div key={period} className="mb-4">
-                    <h4 className="font-semibold text-[#5b3310] mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {/* Fix: Use Array.isArray as a type guard to ensure 'slots' is treated as an array, resolving the 'unknown' type issue. */}
-                        {Array.isArray(slots) && slots.map(time => (
-                            <button 
-                                key={time} 
-                                onClick={() => setSelectedTime(time)}
-                                className={`p-2 rounded-lg transition-colors duration-200 border-2 text-gray-900
-                                    ${selectedTime === time ? 'bg-[#3b200d] text-white border-[#3b200d] font-bold' : 'bg-gray-50 border-gray-300 hover:border-[#5b3310]'}
-                                `}
-                            >
-                                {time}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            ))}
+          {loading ? (
+            <div className="text-center py-8 text-gray-600">
+              Carregando horários...
+            </div>
+          ) : isDayClosed ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+              <p className="text-yellow-800 font-semibold text-sm">
+                ⚠️ Não há horários disponíveis neste dia
+              </p>
+              <p className="text-yellow-700 text-xs mt-1">
+                Por favor, selecione outro dia
+              </p>
+            </div>
+          ) : (
+            <>
+              <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
+              {Object.entries(availableSlots).map(([period, slots]) => (
+                  <div key={period} className="mb-4">
+                      <h4 className="font-semibold text-[#5b3310] mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {/* Fix: Use Array.isArray as a type guard to ensure 'slots' is treated as an array, resolving the 'unknown' type issue. */}
+                          {Array.isArray(slots) && slots.map(time => (
+                              <button 
+                                  key={time} 
+                                  onClick={() => setSelectedTime(time)}
+                                  className={`p-2 rounded-lg transition-colors duration-200 border-2 text-gray-900
+                                      ${selectedTime === time ? 'bg-[#3b200d] text-white border-[#3b200d] font-bold' : 'bg-gray-50 border-gray-300 hover:border-[#5b3310]'}
+                                  `}
+                              >
+                                  {time}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
       <div className="flex justify-between mt-8 border-t border-gray-300 pt-6">
         <button onClick={onBack} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors">Voltar</button>
         <button 
             onClick={handleNext}
-            disabled={!selectedTime}
+            disabled={!selectedTime || isDayClosed}
             className="bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
         >
             Próximo
