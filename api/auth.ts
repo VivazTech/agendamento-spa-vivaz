@@ -588,11 +588,10 @@ export default async function handler(req: any, res: any) {
 
 				const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
-				// Buscar admin por username
-				// Buscar sem role primeiro (compatibilidade com tabelas antigas)
+				// Buscar admin por username incluindo role
 				const { data: admin, error } = await supabase
 					.from('admins')
-					.select('id, username, name, email, password_hash, is_active')
+					.select('id, username, name, email, password_hash, is_active, role')
 					.eq('username', username)
 					.single();
 
@@ -604,21 +603,8 @@ export default async function handler(req: any, res: any) {
 					});
 				}
 				
-				// Tentar buscar role separadamente (se o campo existir)
-				let role = 'admin'; // Default
-				try {
-					const { data: adminWithRole } = await supabase
-						.from('admins')
-						.select('role')
-						.eq('id', admin.id)
-						.single();
-					if (adminWithRole?.role) {
-						role = adminWithRole.role;
-					}
-				} catch (e) {
-					// Campo role não existe, usar default
-					console.log('[AUTH] Campo role não encontrado, usando default');
-				}
+				// Se role não vier do banco, definir default
+				const role = (admin as any).role || 'admin'; // Default para admin se não existir
 
 				// Verificar se está ativo
 				if (!admin.is_active) {
