@@ -91,63 +91,64 @@ const ClientBookingsPage: React.FC = () => {
           <p className="text-gray-600">Aqui estão seus agendamentos</p>
         </div>
 
-      {loading && <div className="text-gray-700">Carregando...</div>}
-      {error && <div className="text-red-600">{error}</div>}
+        {loading && <div className="text-gray-700">Carregando...</div>}
+        {error && <div className="text-red-600">{error}</div>}
 
-      {!loading && !error && rows.length === 0 && (
-        <div className="text-gray-700">Nenhum agendamento encontrado.</div>
-      )}
+        {!loading && !error && rows.length === 0 && (
+          <div className="text-gray-700">Nenhum agendamento encontrado.</div>
+        )}
 
-      <div className="space-y-3">
-        {rows.map((r) => (
-          <div key={r.booking_id} className="border border-gray-300 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="font-semibold text-gray-900">
-                {new Date(r.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.time?.slice(0,5)}
+        <div className="space-y-3">
+          {rows.map((r) => (
+            <div key={r.booking_id} className="border border-gray-300 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-gray-900">
+                  {new Date(r.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.time?.slice(0,5)}
+                </div>
+                <div className="text-[#3b200d] font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
               </div>
-              <div className="text-[#3b200d] font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
+              <div className="text-gray-700 mt-2">
+                {(r.services || []).map(s => s.name).join(', ')}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50"
+                  onClick={() => {
+                    setRescheduleId(r.booking_id);
+                    setNewDate(r.date);
+                    setNewTime((r.time || '').slice(0,5));
+                  }}
+                >
+                  Trocar horário
+                </button>
+                <button
+                  className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
+                  onClick={async () => {
+                    if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
+                    try {
+                      setActionLoading(r.booking_id);
+                      const res = await fetch('/api/bookings', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled' }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
+                      setRows(prev => prev.filter(row => row.booking_id !== r.booking_id));
+                    } catch (e: any) {
+                      alert(e?.message || 'Erro ao cancelar');
+                    } finally {
+                      setActionLoading(null);
+                    }
+                  }}
+                  disabled={actionLoading === r.booking_id}
+                >
+                  {actionLoading === r.booking_id ? 'Cancelando...' : 'Cancelar'}
+                </button>
+              </div>
             </div>
-            <div className="text-gray-700 mt-2">
-              {(r.services || []).map(s => s.name).join(', ')}
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50"
-                onClick={() => {
-                  setRescheduleId(r.booking_id);
-                  setNewDate(r.date);
-                  setNewTime((r.time || '').slice(0,5));
-                }}
-              >
-                Trocar horário
-              </button>
-              <button
-                className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
-                onClick={async () => {
-                  if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return;
-                  try {
-                    setActionLoading(r.booking_id);
-                    const res = await fetch('/api/bookings', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ booking_id: r.booking_id, status: 'cancelled' }),
-                    });
-                    const data = await res.json();
-                    if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao cancelar');
-                    setRows(prev => prev.filter(row => row.booking_id !== r.booking_id));
-                  } catch (e: any) {
-                    alert(e?.message || 'Erro ao cancelar');
-                  } finally {
-                    setActionLoading(null);
-                  }
-                }}
-                disabled={actionLoading === r.booking_id}
-              >
-                {actionLoading === r.booking_id ? 'Cancelando...' : 'Cancelar'}
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {rescheduleId && (
