@@ -178,11 +178,20 @@ export default async function handler(req: any, res: any) {
 			}
 
 			// Verificar se username já existe
-			const { data: existing } = await supabase
+			const { data: existing, error: checkError } = await supabase
 				.from('admins')
 				.select('id')
 				.eq('username', username)
-				.single();
+				.maybeSingle(); // Use maybeSingle() em vez de single() - retorna null se não encontrar
+
+			// Se houver erro (exceto "não encontrado"), retornar erro
+			if (checkError && checkError.code !== 'PGRST116') {
+				console.error('[AUTH] Erro ao verificar username:', checkError);
+				return res.status(500).json({
+					ok: false,
+					error: 'Erro ao verificar username',
+				});
+			}
 
 			if (existing) {
 				return res.status(400).json({
