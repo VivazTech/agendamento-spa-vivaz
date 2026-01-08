@@ -103,18 +103,6 @@ const LoginPage: React.FC = () => {
             )}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Não tem uma conta?{' '}
-            <Link
-              to="/admin/create-account"
-              className="text-[#5b3310] hover:text-[#3b200d] underline font-medium"
-            >
-              Criar conta de admin
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );
