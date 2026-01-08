@@ -1,9 +1,6 @@
 // Tipos afrouxados para evitar dependência de @vercel/node em build local
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-
-// Usar crypto do Node.js (disponível no Vercel)
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 // Função para criar hash SHA-256 da senha
 function hashPassword(password: string): string {
