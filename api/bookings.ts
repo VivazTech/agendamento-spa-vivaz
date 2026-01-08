@@ -66,6 +66,18 @@ export default async function handler(req: any, res: any) {
           booking_services (
             quantity,
             services:service_id ( id, name, price, duration_minutes )
+          ),
+          reschedule_requests (
+            id,
+            requested_date,
+            requested_time,
+            current_date,
+            current_time,
+            status,
+            requested_by,
+            response_message,
+            created_at,
+            responded_at
           )
         `)
 				.order('date', { ascending: true })
@@ -105,6 +117,15 @@ export default async function handler(req: any, res: any) {
 				const total_price = services.reduce((sum: number, s: any) => sum + Number(s.price || 0) * Number(s.quantity || 1), 0);
 				const total_duration_minutes = services.reduce((sum: number, s: any) => sum + Number(s.duration_minutes || 0) * Number(s.quantity || 1), 0);
 
+				// Buscar solicitação pendente mais recente
+				const rescheduleRequests = (b.reschedule_requests || []) as any[];
+				const pendingRequest = rescheduleRequests.find((r: any) => r.status === 'pending');
+				const latestRequest = rescheduleRequests.length > 0 
+					? rescheduleRequests.sort((a: any, b: any) => 
+						new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+					)[0]
+					: null;
+
 				return {
 					booking_id: b.id,
 					date: b.date,
@@ -118,6 +139,7 @@ export default async function handler(req: any, res: any) {
 					total_price: total_price.toFixed(2),
 					total_duration_minutes,
 					services,
+					reschedule_request: pendingRequest || latestRequest || null,
 				};
 			});
 
@@ -487,7 +509,6 @@ export default async function handler(req: any, res: any) {
 	}
 
 	if (req.method === 'PATCH') {
-		// Reagendar (trocar data/hora) de um agendamento existente
 		try {
 			const raw = req.body ?? {};
 			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
@@ -496,23 +517,12 @@ export default async function handler(req: any, res: any) {
 				booking_id?: string;
 				date?: string; // yyyy-mm-dd
 				time?: string; // HH:MM or HH:MM:SS
+				request_id?: string; // ID da solicitação de reagendamento
+				response?: 'accept' | 'reject'; // Resposta à solicitação
+				response_message?: string; // Mensagem opcional ao rejeitar
 			};
 
-			if ((body.action || '').toLowerCase() !== 'reschedule') {
-				return res.status(400).json({ ok: false, error: 'Ação inválida. Use action=reschedule' });
-			}
-
-			const bookingId = body.booking_id;
-			const date = body.date;
-			const timeRaw = body.time;
-
-			if (!bookingId) {
-				return res.status(400).json({ ok: false, error: 'booking_id é obrigatório' });
-			}
-			if (!date || !timeRaw) {
-				return res.status(400).json({ ok: false, error: 'date e time são obrigatórios' });
-			}
-
+			const action = (body.action || '').toLowerCase();
 			const supabaseUrl =
 				process.env.SUPABASE_URL ||
 				process.env.VITE_SUPABASE_URL;
@@ -524,18 +534,137 @@ export default async function handler(req: any, res: any) {
 			}
 			const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
 
-			const time = timeRaw.length === 5 ? `${timeRaw}:00` : timeRaw;
+			// Criar solicitação de reagendamento
+			if (action === 'reschedule') {
+				const bookingId = body.booking_id;
+				const date = body.date;
+				const timeRaw = body.time;
 
-			const { error: updateErr } = await supabase
-				.from('bookings')
-				.update({ date, time, updated_at: new Date().toISOString() })
-				.eq('id', bookingId);
+				if (!bookingId) {
+					return res.status(400).json({ ok: false, error: 'booking_id é obrigatório' });
+				}
+				if (!date || !timeRaw) {
+					return res.status(400).json({ ok: false, error: 'date e time são obrigatórios' });
+				}
 
-			if (updateErr) {
-				return res.status(500).json({ ok: false, error: updateErr.message });
+				// Buscar dados do agendamento atual
+				const { data: bookingData, error: bookingErr } = await supabase
+					.from('bookings')
+					.select('id, date, time')
+					.eq('id', bookingId)
+					.single();
+
+				if (bookingErr || !bookingData) {
+					return res.status(404).json({ ok: false, error: 'Agendamento não encontrado' });
+				}
+
+				const time = timeRaw.length === 5 ? `${timeRaw}:00` : timeRaw;
+
+				// Verificar se já existe uma solicitação pendente para este agendamento
+				const { data: existingRequest } = await supabase
+					.from('reschedule_requests')
+					.select('id')
+					.eq('booking_id', bookingId)
+					.eq('status', 'pending')
+					.single();
+
+				if (existingRequest) {
+					return res.status(400).json({ ok: false, error: 'Já existe uma solicitação de reagendamento pendente para este agendamento' });
+				}
+
+				// Criar solicitação de reagendamento
+				const { data: requestData, error: requestErr } = await supabase
+					.from('reschedule_requests')
+					.insert({
+						booking_id: bookingId,
+						requested_date: date,
+						requested_time: time,
+						current_date: bookingData.date,
+						current_time: bookingData.time,
+						status: 'pending',
+						requested_by: 'client',
+					})
+					.select('id')
+					.single();
+
+				if (requestErr) {
+					return res.status(500).json({ ok: false, error: requestErr.message });
+				}
+
+				return res.status(201).json({ ok: true, message: 'Solicitação de reagendamento criada com sucesso', request_id: requestData.id });
 			}
 
-			return res.status(200).json({ ok: true, message: 'Agendamento reagendado com sucesso' });
+			// Responder à solicitação de reagendamento (aceitar ou rejeitar)
+			if (action === 'respond-reschedule') {
+				const requestId = body.request_id;
+				const response = body.response;
+				const responseMessage = body.response_message || null;
+				const adminId = body.responded_by || null; // Pode ser passado no body ou obtido de outra forma
+
+				if (!requestId) {
+					return res.status(400).json({ ok: false, error: 'request_id é obrigatório' });
+				}
+				if (!response || !['accept', 'reject'].includes(response)) {
+					return res.status(400).json({ ok: false, error: 'response deve ser "accept" ou "reject"' });
+				}
+
+				// Buscar a solicitação
+				const { data: requestData, error: requestErr } = await supabase
+					.from('reschedule_requests')
+					.select('*, bookings!inner(id, date, time)')
+					.eq('id', requestId)
+					.single();
+
+				if (requestErr || !requestData) {
+					return res.status(404).json({ ok: false, error: 'Solicitação não encontrada' });
+				}
+
+				if ((requestData as any).status !== 'pending') {
+					return res.status(400).json({ ok: false, error: 'Esta solicitação já foi respondida' });
+				}
+
+				const newStatus = response === 'accept' ? 'accepted' : 'rejected';
+				const booking = (requestData as any).bookings;
+
+				// Atualizar a solicitação
+				const updateData: any = {
+					status: newStatus,
+					responded_at: new Date().toISOString(),
+					response_message: responseMessage,
+				};
+				if (adminId) {
+					updateData.responded_by = adminId;
+				}
+
+				const { error: updateErr } = await supabase
+					.from('reschedule_requests')
+					.update(updateData)
+					.eq('id', requestId);
+
+				if (updateErr) {
+					return res.status(500).json({ ok: false, error: updateErr.message });
+				}
+
+				// Se aceito, atualizar o agendamento
+				if (response === 'accept') {
+					const { error: bookingUpdateErr } = await supabase
+						.from('bookings')
+						.update({
+							date: (requestData as any).requested_date,
+							time: (requestData as any).requested_time,
+							updated_at: new Date().toISOString(),
+						})
+						.eq('id', booking.id);
+
+					if (bookingUpdateErr) {
+						return res.status(500).json({ ok: false, error: bookingUpdateErr.message });
+					}
+				}
+
+				return res.status(200).json({ ok: true, message: `Solicitação ${response === 'accept' ? 'aceita' : 'rejeitada'} com sucesso` });
+			}
+
+			return res.status(400).json({ ok: false, error: 'Ação inválida. Use action=reschedule ou action=respond-reschedule' });
 		} catch (err: any) {
 			return res.status(500).json({ ok: false, error: err?.message || 'Erro inesperado' });
 		}

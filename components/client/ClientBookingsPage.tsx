@@ -1,12 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import BannerSlider from '../BannerSlider';
 
+type RescheduleRequest = {
+  id: string;
+  requested_date: string;
+  requested_time: string;
+  current_date: string;
+  current_time: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  response_message?: string | null;
+  created_at: string;
+  responded_at?: string | null;
+};
+
 type Row = {
   booking_id: string;
   date: string;
   time: string;
   services: Array<{ name: string; price: number }>;
   total_price: string;
+  reschedule_request?: RescheduleRequest | null;
 };
 
 const ClientBookingsPage: React.FC = () => {
@@ -99,7 +112,12 @@ const ClientBookingsPage: React.FC = () => {
         )}
 
         <div className="space-y-3">
-          {rows.map((r) => (
+          {rows.map((r) => {
+            const hasPendingRequest = r.reschedule_request?.status === 'pending';
+            const hasAcceptedRequest = r.reschedule_request?.status === 'accepted';
+            const hasRejectedRequest = r.reschedule_request?.status === 'rejected';
+            
+            return (
             <div key={r.booking_id} className="border border-gray-300 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-gray-900">
@@ -110,16 +128,57 @@ const ClientBookingsPage: React.FC = () => {
               <div className="text-gray-700 mt-2">
                 {(r.services || []).map(s => s.name).join(', ')}
               </div>
+              
+              {/* Status da solicitação de reagendamento */}
+              {hasPendingRequest && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800 font-medium">
+                    ⏳ Solicitação de troca de horário pendente
+                  </p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    Novo horário solicitado: {new Date(r.reschedule_request!.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.reschedule_request!.requested_time.slice(0,5)}
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Aguardando resposta do profissional...
+                  </p>
+                </div>
+              )}
+              
+              {hasAcceptedRequest && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 font-medium">
+                    ✅ Solicitação de troca aceita
+                  </p>
+                  <p className="text-xs text-green-700 mt-1">
+                    Seu agendamento foi alterado para: {new Date(r.reschedule_request!.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.reschedule_request!.requested_time.slice(0,5)}
+                  </p>
+                </div>
+              )}
+              
+              {hasRejectedRequest && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800 font-medium">
+                    ❌ Solicitação de troca negada
+                  </p>
+                  {r.reschedule_request!.response_message && (
+                    <p className="text-xs text-red-700 mt-1">
+                      {r.reschedule_request!.response_message}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div className="mt-3 flex gap-2">
                 <button
-                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50"
+                  className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => {
                     setRescheduleId(r.booking_id);
                     setNewDate(r.date);
                     setNewTime((r.time || '').slice(0,5));
                   }}
+                  disabled={hasPendingRequest}
                 >
-                  Trocar horário
+                  {hasPendingRequest ? 'Solicitação pendente' : 'Trocar horário'}
                 </button>
                 <button
                   className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"
@@ -147,7 +206,8 @@ const ClientBookingsPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -197,11 +257,18 @@ const ClientBookingsPage: React.FC = () => {
                         body: JSON.stringify({ action: 'reschedule', booking_id: rescheduleId, date: newDate, time: newTime }),
                       });
                       const data = await res.json();
-                      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao reagendar');
-                      setRows(prev => prev.map(row => row.booking_id === rescheduleId ? { ...row, date: newDate, time: `${newTime}:00` } : row));
+                      if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao criar solicitação');
+                      alert('Solicitação de troca de horário enviada! Aguarde a resposta do profissional.');
+                      // Recarregar agendamentos para mostrar a solicitação pendente
+                      const qs = new URLSearchParams({ client: phone });
+                      const refreshRes = await fetch(`/api/bookings?${qs.toString()}`);
+                      const refreshData = await refreshRes.json();
+                      if (refreshRes.ok) {
+                        setRows((refreshData.bookings || []) as Row[]);
+                      }
                       setRescheduleId(null);
                     } catch (e: any) {
-                      alert(e?.message || 'Erro ao reagendar');
+                      alert(e?.message || 'Erro ao criar solicitação');
                     }
                   }}
                 >

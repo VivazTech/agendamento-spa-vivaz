@@ -4,6 +4,18 @@ import { CalendarIcon } from '../icons';
 type Professional = { id: string; name: string; };
 type Service = { id: number; name: string; };
 
+type RescheduleRequest = {
+  id: string;
+  requested_date: string;
+  requested_time: string;
+  current_date: string;
+  current_time: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  response_message?: string | null;
+  created_at: string;
+  responded_at?: string | null;
+};
+
 type BookingRow = {
   booking_id: string;
   date: string; // yyyy-mm-dd
@@ -22,6 +34,7 @@ type BookingRow = {
     duration_minutes: number;
     quantity: number;
   }>;
+  reschedule_request?: RescheduleRequest | null;
 }
 
 const AppointmentsView: React.FC = () => {
@@ -39,6 +52,7 @@ const AppointmentsView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [respondingToRequest, setRespondingToRequest] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -115,6 +129,34 @@ const AppointmentsView: React.FC = () => {
       alert(e?.message || 'Erro ao marcar atendimento como concluído');
     } finally {
       setCompletingId(null);
+    }
+  };
+
+  const respondToRescheduleRequest = async (requestId: string, response: 'accept' | 'reject', responseMessage?: string) => {
+    setRespondingToRequest(requestId);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'respond-reschedule',
+          request_id: requestId,
+          response,
+          response_message: responseMessage || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || `Erro ao ${response === 'accept' ? 'aceitar' : 'rejeitar'} solicitação`);
+      }
+
+      alert(`Solicitação ${response === 'accept' ? 'aceita' : 'rejeitada'} com sucesso!`);
+      load(); // Recarregar lista
+    } catch (e: any) {
+      alert(e?.message || `Erro ao ${response === 'accept' ? 'aceitar' : 'rejeitar'} solicitação`);
+    } finally {
+      setRespondingToRequest(null);
     }
   };
 
@@ -253,6 +295,45 @@ const AppointmentsView: React.FC = () => {
                       ))}
                     </ul>
                   </div>
+                  
+                  {/* Solicitação de reagendamento pendente */}
+                  {b.reschedule_request && b.reschedule_request.status === 'pending' && (
+                    <div className="border-t border-gray-300 my-3 pt-3">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                        <p className="text-sm font-semibold text-yellow-800 mb-2">
+                          ⏳ Solicitação de Troca de Horário
+                        </p>
+                        <p className="text-xs text-yellow-700 mb-1">
+                          <span className="font-medium">Horário atual:</span> {new Date(b.reschedule_request.current_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} às {b.reschedule_request.current_time.slice(0,5)}
+                        </p>
+                        <p className="text-xs text-yellow-700">
+                          <span className="font-medium">Novo horário solicitado:</span> {new Date(b.reschedule_request.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} às {b.reschedule_request.requested_time.slice(0,5)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => respondToRescheduleRequest(b.reschedule_request!.id, 'accept')}
+                          disabled={respondingToRequest === b.reschedule_request!.id}
+                          className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          {respondingToRequest === b.reschedule_request!.id ? 'Processando...' : '✓ Aceitar'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            const message = prompt('Motivo da rejeição (opcional):');
+                            if (message !== null) {
+                              respondToRescheduleRequest(b.reschedule_request!.id, 'reject', message || undefined);
+                            }
+                          }}
+                          disabled={respondingToRequest === b.reschedule_request!.id}
+                          className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          {respondingToRequest === b.reschedule_request!.id ? 'Processando...' : '✗ Rejeitar'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="border-t border-gray-300 my-3 pt-3">
                     <button
                       onClick={() => markAsCompleted(b.booking_id)}
