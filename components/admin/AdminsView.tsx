@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { PlusCircleIcon, TrashIcon, PencilIcon } from '../icons';
+import { usePermissions } from '../../hooks/usePermissions';
 
 type Admin = {
   id: string;
   username: string;
   name: string;
   email: string | null;
+  role?: 'admin' | 'gerente' | 'colaborador';
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -13,6 +15,7 @@ type Admin = {
 }
 
 const AdminsView: React.FC = () => {
+  const permissions = usePermissions();
   const [items, setItems] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,12 +24,14 @@ const AdminsView: React.FC = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'admin' | 'gerente' | 'colaborador'>('colaborador');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editUsername, setEditUsername] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<'admin' | 'gerente' | 'colaborador'>('colaborador');
   const [editActive, setEditActive] = useState<boolean>(true);
 
   const load = async () => {
@@ -64,7 +69,8 @@ const AdminsView: React.FC = () => {
           username: username.trim(), 
           password: password.trim(), 
           name: name.trim(), 
-          email: email.trim() || null 
+          email: email.trim() || null,
+          role: role
         })
       });
       const data = await res.json();
@@ -73,6 +79,7 @@ const AdminsView: React.FC = () => {
       setPassword(''); 
       setName(''); 
       setEmail('');
+      setRole('colaborador');
       await load();
     } catch (e: any) {
       setError(e.message);
@@ -87,6 +94,7 @@ const AdminsView: React.FC = () => {
     setEditPassword(''); // Não mostrar senha atual
     setEditName(a.name);
     setEditEmail(a.email || '');
+    setEditRole(a.role || 'colaborador');
     setEditActive(a.is_active);
   };
 
@@ -96,6 +104,7 @@ const AdminsView: React.FC = () => {
     setEditPassword('');
     setEditName('');
     setEditEmail('');
+    setEditRole('colaborador');
     setEditActive(true);
   };
 
@@ -112,6 +121,7 @@ const AdminsView: React.FC = () => {
         username: editUsername.trim(),
         name: editName.trim(),
         email: editEmail.trim() || null,
+        role: editRole,
         is_active: editActive,
       };
       
@@ -167,11 +177,25 @@ const AdminsView: React.FC = () => {
     }
   };
 
+  // Verificar permissões
+  if (!permissions.canManageUsers) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center bg-red-50 border border-red-200 rounded-lg p-8 max-w-md">
+          <h3 className="text-xl font-bold text-red-800 mb-2">Acesso Negado</h3>
+          <p className="text-red-700">
+            Você não tem permissão para acessar esta página. Apenas administradores podem gerenciar usuários.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Usuários Administradores</h2>
 
-      <form onSubmit={onSubmit} className="bg-white p-4 rounded-lg border border-gray-300 mb-6 grid md:grid-cols-5 gap-3">
+      <form onSubmit={onSubmit} className="bg-white p-4 rounded-lg border border-gray-300 mb-6 grid md:grid-cols-6 gap-3">
         <input
           value={username}
           onChange={e => setUsername(e.target.value)}
@@ -198,6 +222,15 @@ const AdminsView: React.FC = () => {
           placeholder="E-mail (opcional)"
           className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-[#5b3310]"
         />
+        <select
+          value={role}
+          onChange={e => setRole(e.target.value as 'admin' | 'gerente' | 'colaborador')}
+          className="bg-gray-50 text-gray-900 rounded px-3 py-2 outline-none border border-gray-300 focus:border-[#5b3310]"
+        >
+          <option value="colaborador">Colaborador</option>
+          <option value="gerente">Gerente</option>
+          <option value="admin">Admin</option>
+        </select>
         <button
           type="submit"
           disabled={loading}
@@ -222,6 +255,7 @@ const AdminsView: React.FC = () => {
               <th className="p-3">Username</th>
               <th className="p-3">Nome</th>
               <th className="p-3">E-mail</th>
+              <th className="p-3">Tipo</th>
               <th className="p-3">Status</th>
               <th className="p-3">Último Login</th>
               <th className="p-3 text-right">Ações</th>
@@ -253,6 +287,17 @@ const AdminsView: React.FC = () => {
                         type="email"
                         className="bg-gray-50 text-gray-900 rounded px-2 py-1 border border-gray-300 w-full" 
                       />
+                    </td>
+                    <td className="p-3">
+                      <select 
+                        value={editRole} 
+                        onChange={e => setEditRole(e.target.value as 'admin' | 'gerente' | 'colaborador')} 
+                        className="bg-gray-50 text-gray-900 rounded px-2 py-1 border border-gray-300 w-full"
+                      >
+                        <option value="colaborador">Colaborador</option>
+                        <option value="gerente">Gerente</option>
+                        <option value="admin">Admin</option>
+                      </select>
                     </td>
                     <td className="p-3">
                       <label className="inline-flex items-center gap-2 text-gray-700">
