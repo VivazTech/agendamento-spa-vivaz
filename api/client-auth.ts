@@ -17,15 +17,16 @@ async function getClient() {
 		throw new Error('DATABASE_URL ou POSTGRES_URL não configuradas. Configure uma dessas variáveis no Vercel (Settings → Environment Variables).');
 	}
 
-	// Permitir desativar verificação de certificado para debug/ambientes com cadeia self-signed
-	if (process.env.DB_SSL_NO_VERIFY === '1') {
-		// eslint-disable-next-line no-process-env
-		process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-	}
+	// Desabilitar verificação de certificado SSL para evitar erro "self-signed certificate"
+	// Isso é necessário para conexões com Supabase/PostgreSQL em alguns ambientes
+	// eslint-disable-next-line no-process-env
+	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 	
 	const client = new Client({
 		connectionString: databaseUrl,
-		ssl: { rejectUnauthorized: false },
+		ssl: { 
+			rejectUnauthorized: false 
+		},
 	});
 	await client.connect();
 	return client;

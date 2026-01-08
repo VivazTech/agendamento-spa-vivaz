@@ -14,9 +14,15 @@ async function getClient() {
 		throw new Error('DATABASE_URL ou POSTGRES_URL não configuradas. Configure uma dessas variáveis no Vercel (Settings → Environment Variables).');
 	}
 
+	// Desabilitar verificação de certificado SSL para evitar erro "self-signed certificate"
+	// eslint-disable-next-line no-process-env
+	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 	const client = new Client({
 		connectionString: databaseUrl,
-		ssl: { rejectUnauthorized: false },
+		ssl: { 
+			rejectUnauthorized: false 
+		},
 	});
 	await client.connect();
 	return client;
