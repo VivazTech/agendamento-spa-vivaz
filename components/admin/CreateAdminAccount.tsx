@@ -65,6 +65,14 @@ const CreateAdminAccount: React.FC = () => {
         }),
       });
 
+      // Verificar se a resposta é JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('[CreateAdminAccount] Resposta não é JSON:', text.substring(0, 200));
+        throw new Error('Erro no servidor. A resposta não é válida. Verifique o console para mais detalhes.');
+      }
+
       const data = await res.json();
 
       if (!res.ok) {
@@ -86,8 +94,19 @@ const CreateAdminAccount: React.FC = () => {
         navigate('/admin', { replace: true });
       }, 2000);
     } catch (err: any) {
-      setError(err.message || 'Erro ao criar conta. Tente novamente.');
-      console.error('[CreateAdminAccount] Erro:', err);
+      // Tratar diferentes tipos de erro
+      let errorMessage = 'Erro ao criar conta. Tente novamente.';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err instanceof TypeError && err.message.includes('JSON')) {
+        errorMessage = 'Erro ao processar resposta do servidor. Verifique se a API está funcionando.';
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      console.error('[CreateAdminAccount] Erro completo:', err);
     } finally {
       setIsSubmitting(false);
     }

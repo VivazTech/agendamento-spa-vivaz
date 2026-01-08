@@ -17,6 +17,9 @@ function verifyPassword(password: string, hash: string): boolean {
 }
 
 export default async function handler(req: any, res: any) {
+	// Garantir que sempre retornamos JSON
+	res.setHeader('Content-Type', 'application/json');
+	
 	try {
 		// Endpoint para listar admins
 		if (req.method === 'GET') {
@@ -64,7 +67,7 @@ export default async function handler(req: any, res: any) {
 		// Endpoint para criar ou atualizar admin
 		if (req.method === 'PUT') {
 			try {
-			const raw = req.body ?? {};
+				const raw = req.body ?? {};
 			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 			const { id, username, password, name, email, is_active, role } = (parsed || {}) as {
 				id?: string;
