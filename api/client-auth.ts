@@ -123,7 +123,12 @@ export default async function handler(req: any, res: any) {
 					`select id, name, phone, email from public.registered_clients where phone = $1 limit 1`,
 					[phone]
 				);
-				if (r1.rowCount === 0) {
+				let clientData: { id: string; name: string; phone: string; email: string | null } | null = null;
+				
+				if (r1.rowCount > 0) {
+					clientData = r1.rows[0];
+					await cli.query(`update public.registered_clients set last_login = now(), updated_at = now() where phone = $1`, [phone]);
+				} else {
 					const r2 = await cli.query(
 						`select id, name, phone, email from public.clients where regexp_replace(phone, '\\D', '', 'g') = $1 limit 1`,
 						[phone]
@@ -131,10 +136,15 @@ export default async function handler(req: any, res: any) {
 					if (r2.rowCount === 0) {
 						return res.status(404).json({ ok: false, error: 'Telefone não encontrado' });
 					}
-				} else {
-					await cli.query(`update public.registered_clients set last_login = now(), updated_at = now() where phone = $1`, [phone]);
+					clientData = r2.rows[0];
 				}
-				return res.status(200).json({ ok: true, phone });
+				
+				return res.status(200).json({ 
+					ok: true, 
+					phone,
+					name: clientData?.name || null,
+					email: clientData?.email || null
+				});
 			}
 
 			return res.status(400).json({ ok: false, error: 'Ação inválida' });

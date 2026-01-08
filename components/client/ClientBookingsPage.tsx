@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import BannerSlider from '../BannerSlider';
 
 type Row = {
   booking_id: string;
@@ -13,11 +14,33 @@ const ClientBookingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const phone = (typeof window !== 'undefined' && localStorage.getItem('client_phone')) || '';
+  const [clientName, setClientName] = useState<string | null>(null);
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Buscar nome do cliente
+  useEffect(() => {
+    (async () => {
+      if (!phone) return;
+      try {
+        const res = await fetch('/api/client-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'login', phone }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok && data.name) {
+          setClientName(data.name);
+        }
+      } catch (e) {
+        console.error('Erro ao buscar nome do cliente:', e);
+      }
+    })();
+  }, [phone]);
+
+  // Buscar agendamentos
   useEffect(() => {
     (async () => {
       if (!phone) return;
@@ -29,13 +52,18 @@ const ClientBookingsPage: React.FC = () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Erro ao carregar agendamentos');
         setRows((data.bookings || []) as Row[]);
+        
+        // Se não conseguiu o nome pela API de auth, tentar pegar do primeiro booking
+        if (!clientName && data.bookings && data.bookings.length > 0 && data.bookings[0].client_name) {
+          setClientName(data.bookings[0].client_name);
+        }
       } catch (e: any) {
         setError(e?.message || 'Erro ao carregar agendamentos');
       } finally {
         setLoading(false);
       }
     })();
-  }, [phone]);
+  }, [phone, clientName]);
 
   if (!phone) {
     return (
@@ -47,9 +75,21 @@ const ClientBookingsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Meus agendamentos</h2>
-      <p className="text-gray-600 mb-6">Conectado pelo WhatsApp <span className="font-semibold">{phone}</span></p>
+    <div className="max-w-3xl mx-auto">
+      {/* Banner */}
+      <div className="w-full pt-4 mb-6">
+        <BannerSlider />
+      </div>
+
+      {/* Conteúdo principal */}
+      <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
+        {/* Saudação */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {clientName ? `Olá, ${clientName}!` : 'Olá!'}
+          </h2>
+          <p className="text-gray-600">Aqui estão seus agendamentos</p>
+        </div>
 
       {loading && <div className="text-gray-700">Carregando...</div>}
       {error && <div className="text-red-600">{error}</div>}
