@@ -21,6 +21,7 @@ type BookingRow = {
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
   professional_id: string | null;
+  status?: string; // 'scheduled', 'completed', 'cancelled', etc.
   client_id: string;
   client_name: string;
   client_phone: string;
@@ -52,6 +53,7 @@ const AppointmentsView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [respondingToRequest, setRespondingToRequest] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -100,6 +102,32 @@ const AppointmentsView: React.FC = () => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo]);
+
+  const updateBookingStatus = async (bookingId: string, newStatus: 'scheduled' | 'completed') => {
+    setUpdatingStatus(bookingId);
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          status: newStatus,
+          send_whatsapp: false, // Não enviar WhatsApp
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || 'Erro ao atualizar status');
+      }
+
+      load(); // Recarregar lista
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao atualizar status do agendamento');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
 
   const respondToRescheduleRequest = async (requestId: string, response: 'accept' | 'reject', responseMessage?: string) => {
     setRespondingToRequest(requestId);
@@ -263,6 +291,39 @@ const AppointmentsView: React.FC = () => {
                         <li key={s.id}>{s.name}</li>
                       ))}
                     </ul>
+                  </div>
+                  
+                  {/* Status do agendamento */}
+                  <div className="border-t border-gray-300 my-3 pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Status:</span>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        b.status === 'completed' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {b.status === 'completed' ? 'Concluído' : 'Agendado'}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      {b.status !== 'completed' ? (
+                        <button
+                          onClick={() => updateBookingStatus(b.booking_id, 'completed')}
+                          disabled={updatingStatus === b.booking_id}
+                          className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          {updatingStatus === b.booking_id ? 'Atualizando...' : '✓ Marcar como Concluído'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updateBookingStatus(b.booking_id, 'scheduled')}
+                          disabled={updatingStatus === b.booking_id}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          {updatingStatus === b.booking_id ? 'Atualizando...' : '↩ Voltar para Agendado'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Solicitação de reagendamento pendente */}

@@ -62,6 +62,7 @@ export default async function handler(req: any, res: any) {
           date,
           time,
           professional_id,
+          status,
           clients:client_id ( id, name, phone, email, room_number ),
           booking_services (
             quantity,
@@ -131,6 +132,7 @@ export default async function handler(req: any, res: any) {
 					date: b.date,
 					time: b.time,
 					professional_id: b.professional_id,
+					status: b.status || 'scheduled', // Default para 'scheduled' se não tiver status
 					client_id: b.clients?.id,
 					client_name: b.clients?.name,
 					client_phone: b.clients?.phone,
@@ -363,7 +365,8 @@ export default async function handler(req: any, res: any) {
 			const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 			const body = (parsed || {}) as {
 				booking_id?: string;
-				status?: string; // 'completed', 'cancelled', etc.
+				status?: string; // 'scheduled', 'completed', 'cancelled', etc.
+				send_whatsapp?: boolean; // Se deve enviar WhatsApp (padrão: false)
 			};
 
 			const bookingId = body.booking_id;
@@ -414,9 +417,8 @@ export default async function handler(req: any, res: any) {
 			}
 
 			// Atualizar status do agendamento
-			// Nota: Se a tabela não tiver coluna 'status', você precisará adicioná-la no Supabase
-			// Por enquanto, vamos usar uma coluna 'completed_at' ou similar
 			const updateData: any = {
+				status: status,
 				updated_at: new Date().toISOString(),
 			};
 
@@ -435,12 +437,12 @@ export default async function handler(req: any, res: any) {
 				.eq('id', bookingId);
 
 			if (updateErr) {
-				// Se a coluna não existir, apenas logamos o erro mas continuamos
-				console.warn('Erro ao atualizar status (coluna pode não existir):', updateErr.message);
+				return res.status(500).json({ ok: false, error: updateErr.message });
 			}
 
-			// Se o status for 'completed', enviar mensagens via WhatsApp
-			if (status === 'completed') {
+			// Enviar mensagens via WhatsApp apenas se solicitado explicitamente
+			const shouldSendWhatsApp = body.send_whatsapp === true;
+			if (status === 'completed' && shouldSendWhatsApp) {
 				try {
 					const { sendWhatsAppMessage, formatCompletionMessage, formatProfessionalMessage } = await import('./whatsapp');
 
