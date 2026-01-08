@@ -32,6 +32,7 @@ export default async function handler(req: any, res: any) {
 					process.env.VITE_SUPABASE_ANON_KEY;
 
 				if (!supabaseUrl || !supabaseKey) {
+					console.error('[AUTH GET] Variáveis de ambiente não configuradas');
 					return res.status(500).json({
 						ok: false,
 						error: 'SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não configurados',
