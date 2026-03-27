@@ -27,24 +27,32 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'POST') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { image_url, title, description, link_url, display_order, is_active } = body as {
+			const { image_url, title, description, link_url, display_order, is_active, banner_type, video_url } = body as {
 				image_url?: string;
 				title?: string;
 				description?: string;
 				link_url?: string;
 				display_order?: number;
 				is_active?: boolean;
+				banner_type?: string;
+				video_url?: string | null;
 			};
-			if (!image_url) {
-				return res.status(400).json({ ok: false, error: 'image_url é obrigatório' });
+			const type = banner_type === 'video' ? 'video' : 'slide';
+			if (!image_url?.trim()) {
+				return res.status(400).json({ ok: false, error: 'URL da imagem / miniatura é obrigatória' });
+			}
+			if (type === 'video' && !String(video_url || '').trim()) {
+				return res.status(400).json({ ok: false, error: 'URL do vídeo é obrigatória no modo vídeo' });
 			}
 			const { data, error } = await supabase
 				.from('banners')
 				.insert({
-					image_url,
+					image_url: image_url.trim(),
 					title: title || null,
 					description: description || null,
 					link_url: link_url || null,
+					banner_type: type,
+					video_url: type === 'video' ? String(video_url).trim() : null,
 					display_order: display_order ?? 0,
 					is_active: is_active ?? true,
 				})
@@ -57,7 +65,7 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'PUT') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { id, image_url, title, description, link_url, display_order, is_active } = body as {
+			const { id, image_url, title, description, link_url, display_order, is_active, banner_type, video_url } = body as {
 				id?: number;
 				image_url?: string;
 				title?: string;
@@ -65,17 +73,25 @@ export default async function handler(req: any, res: any) {
 				link_url?: string;
 				display_order?: number;
 				is_active?: boolean;
+				banner_type?: string;
+				video_url?: string | null;
 			};
-			if (!id || !image_url) {
+			const type = banner_type === 'video' ? 'video' : 'slide';
+			if (!id || !image_url?.trim()) {
 				return res.status(400).json({ ok: false, error: 'id e image_url são obrigatórios' });
+			}
+			if (type === 'video' && !String(video_url || '').trim()) {
+				return res.status(400).json({ ok: false, error: 'URL do vídeo é obrigatória no modo vídeo' });
 			}
 			const { error } = await supabase
 				.from('banners')
 				.update({
-					image_url,
+					image_url: image_url.trim(),
 					title: title || null,
 					description: description || null,
 					link_url: link_url || null,
+					banner_type: type,
+					video_url: type === 'video' ? String(video_url).trim() : null,
 					display_order: display_order ?? 0,
 					is_active: is_active ?? true,
 				})

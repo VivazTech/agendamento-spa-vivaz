@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { PencilIcon, TrashIcon, PlusCircleIcon } from '../icons';
 
+type BannerType = 'slide' | 'video';
+
 type Banner = {
   id: number;
   image_url: string;
@@ -9,6 +11,8 @@ type Banner = {
   link_url?: string | null;
   display_order: number;
   is_active: boolean;
+  banner_type?: BannerType | string | null;
+  video_url?: string | null;
 };
 
 const BannersView: React.FC = () => {
@@ -18,7 +22,9 @@ const BannersView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [formData, setFormData] = useState({
+    banner_type: 'slide' as BannerType,
     image_url: '',
+    video_url: '',
     title: '',
     description: '',
     link_url: '',
@@ -41,13 +47,20 @@ const BannersView: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
+
+  const normalizeType = (t: string | null | undefined): BannerType =>
+    t === 'video' ? 'video' : 'slide';
 
   const handleOpenModal = (banner: Banner | null = null) => {
     if (banner) {
       setEditingBanner(banner);
       setFormData({
+        banner_type: normalizeType(banner.banner_type),
         image_url: banner.image_url || '',
+        video_url: banner.video_url || '',
         title: banner.title || '',
         description: banner.description || '',
         link_url: banner.link_url || '',
@@ -57,7 +70,9 @@ const BannersView: React.FC = () => {
     } else {
       setEditingBanner(null);
       setFormData({
+        banner_type: 'slide',
         image_url: '',
+        video_url: '',
         title: '',
         description: '',
         link_url: '',
@@ -78,13 +93,23 @@ const BannersView: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      const payload = {
+        banner_type: formData.banner_type,
+        image_url: formData.image_url.trim(),
+        video_url: formData.banner_type === 'video' ? formData.video_url.trim() : '',
+        title: formData.title,
+        description: formData.description,
+        link_url: formData.link_url,
+        display_order: formData.display_order,
+        is_active: formData.is_active,
+      };
       if (editingBanner) {
         const res = await fetch('/api/banners', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingBanner.id,
-            ...formData,
+            ...payload,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -93,7 +118,7 @@ const BannersView: React.FC = () => {
         const res = await fetch('/api/banners', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.error || 'Erro ao criar banner');
@@ -108,7 +133,7 @@ const BannersView: React.FC = () => {
   };
 
   const handleDeleteBanner = async (bannerId: number) => {
-    if (!window.confirm("Tem certeza que deseja excluir este banner?")) return;
+    if (!window.confirm('Tem certeza que deseja excluir este banner?')) return;
     try {
       setLoading(true);
       setError(null);
@@ -143,61 +168,83 @@ const BannersView: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {banners.map(banner => (
-          <div key={banner.id} className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-            <div className="relative">
-              <img
-                src={banner.image_url}
-                alt={banner.title || 'Banner'}
-                className="w-full h-48 object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              <div className="absolute top-2 right-2">
-                <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                  banner.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
-                }`}>
-                  {banner.is_active ? 'Ativo' : 'Inativo'}
-                </span>
+        {banners.map((banner) => {
+          const isVideo = normalizeType(banner.banner_type) === 'video';
+          return (
+            <div key={banner.id} className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+              <div className="relative">
+                <img
+                  src={banner.image_url}
+                  alt={banner.title || 'Banner'}
+                  className="w-full h-48 object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                {isVideo && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none">
+                    <span className="rounded-full bg-white/90 w-14 h-14 flex items-center justify-center shadow-lg">
+                      <svg className="w-8 h-8 text-[#3b200d] ml-1" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </span>
+                  </div>
+                )}
+                <div className="absolute top-2 left-2 flex gap-2">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                      isVideo ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                    }`}
+                  >
+                    {isVideo ? 'Vídeo' : 'Slide'}
+                  </span>
+                </div>
+                <div className="absolute top-2 right-2">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                      banner.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                    }`}
+                  >
+                    {banner.is_active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="p-4">
-              {banner.title && (
-                <h3 className="font-bold text-gray-900 mb-1">{banner.title}</h3>
-              )}
-              {banner.description && (
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">{banner.description}</p>
-              )}
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-xs text-gray-500">Ordem: {banner.display_order}</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleOpenModal(banner)}
-                    className="text-gray-700 hover:text-blue-600"
-                    title="Editar"
-                  >
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteBanner(banner.id)}
-                    className="text-gray-700 hover:text-red-600"
-                    title="Excluir"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
+              <div className="p-4">
+                {banner.title && <h3 className="font-bold text-gray-900 mb-1">{banner.title}</h3>}
+                {banner.description && (
+                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">{banner.description}</p>
+                )}
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-xs text-gray-500">Ordem: {banner.display_order}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleOpenModal(banner)}
+                      className="text-gray-700 hover:text-blue-600"
+                      title="Editar"
+                      type="button"
+                    >
+                      <PencilIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBanner(banner.id)}
+                      className="text-gray-700 hover:text-red-600"
+                      title="Excluir"
+                      type="button"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {banners.length === 0 && !loading && (
         <div className="text-center text-gray-600 py-8">Nenhum banner cadastrado.</div>
       )}
 
-      {/* Modal de Edição/Criação */}
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
@@ -205,37 +252,108 @@ const BannersView: React.FC = () => {
         >
           <div
             className="bg-white p-8 rounded-xl border border-gray-300 shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-2xl font-bold mb-6">{editingBanner ? 'Editar Banner' : 'Novo Banner'}</h2>
             <form onSubmit={handleSaveBanner} className="space-y-4">
               <div>
-                <label htmlFor="image_url" className="block text-sm font-medium text-gray-700 mb-1">
-                  URL da Imagem <span className="text-red-500">*</span>
+                <label htmlFor="banner_type" className="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo de banner
                 </label>
-                <input
-                  type="url"
-                  id="image_url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                <select
+                  id="banner_type"
+                  value={formData.banner_type}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      banner_type: e.target.value as BannerType,
+                    })
+                  }
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
-                  required
-                />
-                {formData.image_url && (
-                  <div className="mt-2">
-                    <img
-                      src={formData.image_url}
-                      alt="Preview"
-                      className="w-full h-48 object-cover rounded-lg border border-gray-300"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
+                >
+                  <option value="slide">Slide de imagens</option>
+                  <option value="video">Vídeo</option>
+                </select>
               </div>
+
+              {formData.banner_type === 'slide' ? (
+                <div>
+                  <label htmlFor="image_url" className="block text-sm font-medium text-gray-700 mb-1">
+                    URL da Imagem <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    id="image_url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
+                    required
+                  />
+                  {formData.image_url && (
+                    <div className="mt-2">
+                      <img
+                        src={formData.image_url}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label htmlFor="video_url" className="block text-sm font-medium text-gray-700 mb-1">
+                      URL do vídeo <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      id="video_url"
+                      value={formData.video_url}
+                      onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
+                      placeholder="YouTube, Vimeo ou link direto .mp4"
+                      required
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Ex.: link do YouTube, Vimeo ou arquivo de vídeo (.mp4).
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="image_url_video" className="block text-sm font-medium text-gray-700 mb-1">
+                      URL da miniatura <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-gray-500 mb-2">Exibida até o vídeo terminar de carregar.</p>
+                    <input
+                      type="url"
+                      id="image_url_video"
+                      value={formData.image_url}
+                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                      className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
+                      required
+                    />
+                    {formData.image_url && (
+                      <div className="mt-2">
+                        <img
+                          src={formData.image_url}
+                          alt="Preview da miniatura"
+                          className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Título (opcional)</label>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                  Título (opcional)
+                </label>
                 <input
                   type="text"
                   id="title"
@@ -245,7 +363,9 @@ const BannersView: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Descrição (opcional)</label>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição (opcional)
+                </label>
                 <textarea
                   id="description"
                   value={formData.description}
@@ -255,7 +375,9 @@ const BannersView: React.FC = () => {
                 />
               </div>
               <div>
-                <label htmlFor="link_url" className="block text-sm font-medium text-gray-700 mb-1">URL de Destino (opcional)</label>
+                <label htmlFor="link_url" className="block text-sm font-medium text-gray-700 mb-1">
+                  URL de Destino (opcional)
+                </label>
                 <input
                   type="url"
                   id="link_url"
@@ -264,10 +386,17 @@ const BannersView: React.FC = () => {
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
                   placeholder="https://exemplo.com"
                 />
+                {formData.banner_type === 'video' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    No modo vídeo, o link aparece como &quot;Abrir link&quot; no rodapé do banner.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="display_order" className="block text-sm font-medium text-gray-700 mb-1">Ordem de Exibição</label>
+                  <label htmlFor="display_order" className="block text-sm font-medium text-gray-700 mb-1">
+                    Ordem de Exibição
+                  </label>
                   <input
                     type="number"
                     id="display_order"
@@ -314,4 +443,3 @@ const BannersView: React.FC = () => {
 };
 
 export default BannersView;
-
