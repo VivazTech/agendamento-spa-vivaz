@@ -3,6 +3,28 @@ import { Service } from '../../types';
 import { ClockIcon, DollarSignIcon, PencilIcon, PlusCircleIcon, TrashIcon } from '../icons';
 import ServiceModal from './ServiceModal';
 
+const thumbClass =
+  'w-14 h-14 rounded-lg object-cover border border-gray-200 bg-gray-100 flex-shrink-0';
+
+const ServiceThumb: React.FC<{ url?: string | null; label: string }> = ({ url, label }) => {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => {
+    setBroken(false);
+  }, [url]);
+  if (!url?.trim() || broken) {
+    return <div className={thumbClass} aria-hidden title="Sem imagem" />;
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className={thumbClass}
+      title={label}
+      onError={() => setBroken(true)}
+    />
+  );
+};
+
 const ServicesView: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
@@ -179,6 +201,7 @@ const ServicesView: React.FC = () => {
         <table className="w-full text-left">
           <thead className="bg-gray-100/50">
             <tr>
+              <th className="p-4 font-semibold w-[88px]">Imagem</th>
               <th className="p-4 font-semibold">Serviço</th>
               <th className="p-4 font-semibold">Profissional</th>
               <th className="p-4 font-semibold text-center">Duração</th>
@@ -189,6 +212,9 @@ const ServicesView: React.FC = () => {
           <tbody className="divide-y divide-gray-700">
             {services.map(service => (
               <tr key={service.id} className="hover:bg-gray-100/40">
+                <td className="p-4 align-top">
+                  <ServiceThumb url={service.image_url} label={service.name} />
+                </td>
                 <td className="p-4">
                     <p className="font-bold">{service.name}</p>
                     <p className="text-sm text-gray-600 max-w-md">{service.description}</p>
@@ -219,7 +245,8 @@ const ServicesView: React.FC = () => {
         {services.map(service => (
           <div key={service.id} className="bg-white border border-gray-300 rounded-lg p-4">
             <div className="flex justify-between items-start gap-3">
-              <div className="min-w-0">
+              <ServiceThumb url={service.image_url} label={service.name} />
+              <div className="min-w-0 flex-1">
                 <p className="font-bold text-gray-900 truncate">{service.name}</p>
                 <p className="text-sm text-gray-600">{service.description}</p>
                 <p className="text-gray-700 text-sm mt-1">
