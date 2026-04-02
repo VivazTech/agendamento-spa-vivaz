@@ -11,6 +11,7 @@ type BookingRow = {
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
   professional_id: string | null;
+  professional_name?: string | null;
   client_id: string;
   client_name: string;
   client_phone: string;
@@ -26,9 +27,13 @@ type BookingRow = {
   }>;
 }
 
+/** Valor do filtro: string vazio = todos os profissionais */
+const ALL_PROFESSIONALS_VALUE = '';
+
 const ScheduleView: React.FC = () => {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
-  const [selected, setSelected] = useState<string>('');
+  const [selected, setSelected] = useState<string>(ALL_PROFESSIONALS_VALUE);
+  const showAllProfessionals = selected === ALL_PROFESSIONALS_VALUE;
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +80,11 @@ const ScheduleView: React.FC = () => {
   };
 
   const load = async () => {
-    if (!selected) { setBookings([]); return; }
     setLoading(true);
     setError(null);
     try {
       const qs = new URLSearchParams();
-      qs.set('professional_id', selected);
+      if (selected) qs.set('professional_id', selected);
       // limitar janela de tempo conforme a visão
       if (view === 'day') {
         const from = formatDate(currentDate);
@@ -134,9 +138,9 @@ const ScheduleView: React.FC = () => {
           <select
             value={selected}
             onChange={e => setSelected(e.target.value)}
-            className="bg-white text-gray-900 border border-gray-300 rounded px-3 py-2"
+            className="bg-white text-gray-900 border border-gray-300 rounded px-3 py-2 min-w-[220px]"
           >
-            <option value="">Selecione o profissional</option>
+            <option value={ALL_PROFESSIONALS_VALUE}>Todos os profissionais</option>
             {professionals.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -186,15 +190,14 @@ const ScheduleView: React.FC = () => {
 
       {error && <div className="text-red-400 mb-4">{error}</div>}
 
-      {!selected && <div className="text-gray-600">Escolha um profissional para visualizar a agenda.</div>}
-      {selected && loading && <div className="text-gray-700">Carregando agenda...</div>}
+      {loading && <div className="text-gray-700">Carregando agenda...</div>}
 
-      {selected && !loading && grouped.length === 0 && (
+      {!loading && grouped.length === 0 && view === 'day' && (
         <div className="text-gray-600">Nenhum agendamento para este período.</div>
       )}
 
       {/* Dia */}
-      {selected && !loading && view === 'day' && (
+      {!loading && view === 'day' && (
         <div className="mb-6">
           <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
             {currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
@@ -208,6 +211,9 @@ const ScheduleView: React.FC = () => {
                   <div>
                     <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
                     <p className="text-sm text-gray-600">{b.client_phone}</p>
+                    {showAllProfessionals && b.professional_name && (
+                      <p className="text-xs text-[#5b3310] font-medium mt-1">{b.professional_name}</p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-[#3b200d] text-lg">R${Number(b.total_price).toFixed(2)}</p>
@@ -228,7 +234,7 @@ const ScheduleView: React.FC = () => {
       )}
 
       {/* Semana */}
-      {selected && !loading && view === 'week' && (
+      {!loading && view === 'week' && (
         <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           {Array.from({ length: 7 }).map((_, i) => {
             const day = new Date(startOfWeek(currentDate));
@@ -249,9 +255,14 @@ const ScheduleView: React.FC = () => {
                 ) : (
                   <ul className="space-y-2">
                     {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
-                      <li key={b.booking_id} className="bg-gray-200/60 rounded px-2 py-1 flex justify-between">
-                        <span className="text-gray-700">{b.time.slice(0,5)}</span>
-                        <span className="text-gray-700">{b.client_name}</span>
+                      <li key={b.booking_id} className="bg-gray-200/60 rounded px-2 py-1 space-y-0.5">
+                        <div className="flex justify-between gap-1">
+                          <span className="text-gray-700">{b.time.slice(0,5)}</span>
+                          <span className="text-gray-700 truncate">{b.client_name}</span>
+                        </div>
+                        {showAllProfessionals && b.professional_name && (
+                          <div className="text-[10px] text-[#5b3310] font-medium truncate">{b.professional_name}</div>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -263,7 +274,7 @@ const ScheduleView: React.FC = () => {
       )}
 
       {/* Mês */}
-      {selected && !loading && view === 'month' && (
+      {!loading && view === 'month' && (
         <div className="grid grid-cols-7 gap-2">
           {(() => {
             const first = startOfMonth(currentDate);
@@ -301,7 +312,7 @@ const ScheduleView: React.FC = () => {
         </div>
       )}
 
-      {selected && !loading && view === 'month' && monthSelectedDate && (
+      {!loading && view === 'month' && monthSelectedDate && (
         <div className="mt-6 mb-6">
           <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
             {monthSelectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
@@ -315,6 +326,9 @@ const ScheduleView: React.FC = () => {
                   <div>
                     <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
                     <p className="text-sm text-gray-600">{b.client_phone}</p>
+                    {showAllProfessionals && b.professional_name && (
+                      <p className="text-xs text-[#5b3310] font-medium mt-1">{b.professional_name}</p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-[#3b200d] text-lg">R${Number(b.total_price).toFixed(2)}</p>

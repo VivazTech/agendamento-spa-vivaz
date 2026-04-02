@@ -13,7 +13,7 @@ import BusinessHoursView from './BusinessHoursView';
 export type AdminView = 'appointments' | 'services' | 'professionals' | 'schedule' | 'reports' | 'admins' | 'categories' | 'banners' | 'business-hours';
 
 const Admin: React.FC = () => {
-  const [activeView, setActiveView] = useState<AdminView>('appointments');
+  const [activeView, setActiveView] = useState<AdminView>('schedule');
 
   const renderContent = () => {
     switch (activeView) {
@@ -36,7 +36,7 @@ const Admin: React.FC = () => {
       case 'business-hours':
         return <BusinessHoursView />;
       default:
-        return <AppointmentsView />;
+        return <ScheduleView />;
     }
   };
 

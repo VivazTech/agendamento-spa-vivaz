@@ -63,6 +63,7 @@ export default async function handler(req: any, res: any) {
           time,
           professional_id,
           status,
+          professionals:professional_id ( id, name ),
           clients:client_id ( id, name, phone, email, room_number ),
           booking_services (
             quantity,
@@ -132,6 +133,7 @@ export default async function handler(req: any, res: any) {
 					date: b.date,
 					time: b.time,
 					professional_id: b.professional_id,
+					professional_name: (b.professionals as { name?: string } | null)?.name ?? null,
 					status: b.status || 'scheduled', // Default para 'scheduled' se não tiver status
 					client_id: b.clients?.id,
 					client_name: b.clients?.name,

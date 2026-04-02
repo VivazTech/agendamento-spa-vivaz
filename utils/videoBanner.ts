@@ -39,3 +39,23 @@ export function parseVideoEmbed(inputUrl: string): VideoEmbed | null {
 
   return null;
 }
+
+/** Parâmetros de iframe para autoplay com som desligado (requisito dos navegadores). */
+export function iframeSrcWithAutoplayMuted(src: string): string {
+  try {
+    const u = new URL(src);
+    const h = u.hostname.toLowerCase();
+    if (h.includes('youtube.com') || h.includes('youtu.be')) {
+      u.searchParams.set('autoplay', '1');
+      u.searchParams.set('mute', '1');
+      u.searchParams.set('playsinline', '1');
+    } else if (h.includes('vimeo.com')) {
+      u.searchParams.set('autoplay', '1');
+      u.searchParams.set('muted', '1');
+    }
+    return u.toString();
+  } catch {
+    const sep = src.includes('?') ? '&' : '?';
+    return `${src}${sep}autoplay=1&mute=1`;
+  }
+}

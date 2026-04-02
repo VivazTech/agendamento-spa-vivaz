@@ -39,6 +39,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
     <div className="bg-white p-4 rounded-xl border border-gray-300 shadow-sm flex flex-col h-full">
       <nav className="flex md:flex-col justify-around md:justify-start md:space-y-2 flex-grow">
         <NavItem
+          label="Agenda"
+          icon={<CalendarIcon className="w-6 h-6" />}
+          isActive={activeView === 'schedule'}
+          onClick={() => setActiveView('schedule')}
+        />
+        <NavItem
           label="Agendamentos"
           icon={<CalendarDaysIcon className="w-6 h-6" />}
           isActive={activeView === 'appointments'}
@@ -55,12 +61,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
           icon={<UserIcon className="w-6 h-6" />}
           isActive={activeView === 'professionals'}
           onClick={() => setActiveView('professionals')}
-        />
-        <NavItem
-          label="Agenda"
-          icon={<CalendarIcon className="w-6 h-6" />}
-          isActive={activeView === 'schedule'}
-          onClick={() => setActiveView('schedule')}
         />
         <NavItem
           label="Relatórios"

@@ -21,7 +21,16 @@ export default async function handler(req: any, res: any) {
 				.order('display_order', { ascending: true })
 				.order('created_at', { ascending: false });
 			if (error) return res.status(500).json({ ok: false, error: error.message });
-			return res.status(200).json({ ok: true, banners: data || [] });
+
+			let hero_mode: 'slider' | 'video' = 'slider';
+			const { data: settingsRow, error: settingsErr } = await supabase
+				.from('banner_promo_settings')
+				.select('hero_mode')
+				.eq('id', 1)
+				.maybeSingle();
+			if (!settingsErr && settingsRow?.hero_mode === 'video') hero_mode = 'video';
+
+			return res.status(200).json({ ok: true, banners: data || [], hero_mode });
 		}
 
 		if (req.method === 'POST') {
@@ -63,6 +72,28 @@ export default async function handler(req: any, res: any) {
 		}
 
 		if (req.method === 'PUT') {
+			const urlObj = new URL(req?.url || '/', 'http://localhost');
+			if (urlObj.searchParams.get('settings') === '1') {
+				const raw = req.body ?? {};
+				const body =
+					typeof raw === 'string'
+						? (() => {
+								try {
+									return JSON.parse(raw);
+								} catch {
+									return {};
+								}
+							})()
+						: raw;
+				const hero_mode = (body as { hero_mode?: string }).hero_mode === 'video' ? 'video' : 'slider';
+				const { error: setErr } = await supabase.from('banner_promo_settings').upsert(
+					{ id: 1, hero_mode },
+					{ onConflict: 'id' }
+				);
+				if (setErr) return res.status(500).json({ ok: false, error: setErr.message });
+				return res.status(200).json({ ok: true, hero_mode });
+			}
+
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
 			const { id, image_url, title, description, link_url, display_order, is_active, banner_type, video_url } = body as {

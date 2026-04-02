@@ -3,6 +3,7 @@ import { useBackdropPointerClose } from '../../hooks/useBackdropPointerClose';
 import { PencilIcon, TrashIcon, PlusCircleIcon } from '../icons';
 
 type BannerType = 'slide' | 'video';
+type HeroMode = 'slider' | 'video';
 
 type Banner = {
   id: number;
@@ -18,6 +19,8 @@ type Banner = {
 
 const BannersView: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [heroMode, setHeroMode] = useState<HeroMode>('slider');
+  const [savingHeroMode, setSavingHeroMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,6 +44,7 @@ const BannersView: React.FC = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Erro ao carregar banners');
       setBanners((data.banners || []) as Banner[]);
+      setHeroMode(data.hero_mode === 'video' ? 'video' : 'slider');
     } catch (e: any) {
       setError(e.message || 'Erro ao carregar banners');
     } finally {
@@ -135,6 +139,27 @@ const BannersView: React.FC = () => {
     }
   };
 
+  const handleHeroModeChange = async (mode: HeroMode) => {
+    const previous = heroMode;
+    setHeroMode(mode);
+    try {
+      setSavingHeroMode(true);
+      setError(null);
+      const res = await fetch('/api/banners?settings=1', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hero_mode: mode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string }).error || 'Erro ao salvar exibição do topo');
+    } catch (e: any) {
+      setHeroMode(previous);
+      setError(e.message || 'Erro ao salvar exibição do topo');
+    } finally {
+      setSavingHeroMode(false);
+    }
+  };
+
   const handleDeleteBanner = async (bannerId: number) => {
     if (!window.confirm('Tem certeza que deseja excluir este banner?')) return;
     try {
@@ -153,15 +178,37 @@ const BannersView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 text-center">Gerenciar Banners Promocionais</h2>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <h2 className="text-2xl font-bold text-gray-900 text-center sm:text-left">Gerenciar Banners Promocionais</h2>
         <button
           onClick={() => handleOpenModal(null)}
-          className="flex items-center gap-2 bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300"
+          className="flex items-center justify-center gap-2 bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300"
         >
           <PlusCircleIcon className="w-5 h-5" />
           Novo Banner
         </button>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+        <label htmlFor="hero_mode" className="block text-sm font-semibold text-gray-900">
+          O que exibir no topo do site
+        </label>
+        <p className="text-xs text-gray-600">
+          Escolha <strong>apenas um</strong>: carrossel de imagens (slides) ou o banner de vídeo. No modo vídeo, só entra o primeiro vídeo ativo (por ordem de exibição).
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            id="hero_mode"
+            value={heroMode}
+            disabled={savingHeroMode}
+            onChange={(e) => handleHeroModeChange(e.target.value as HeroMode)}
+            className="bg-white text-gray-900 border border-gray-300 rounded-lg px-3 py-2 min-w-[240px] focus:ring-[#5b3310] focus:border-[#5b3310] disabled:opacity-60"
+          >
+            <option value="slider">Slider de imagens (banners tipo slide)</option>
+            <option value="video">Vídeo (banner tipo vídeo)</option>
+          </select>
+          {savingHeroMode && <span className="text-sm text-gray-600">Salvando…</span>}
+        </div>
       </div>
 
       {error && <div className="mb-4 text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-lg">{error}</div>}
