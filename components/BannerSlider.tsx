@@ -58,35 +58,38 @@ function VideoHeroBanner({ banner }: { banner: Banner }) {
     <div className="w-full mb-8 overflow-hidden">
       <div className="relative w-full mx-auto rounded-2xl overflow-hidden" style={{ maxWidth: '1200px' }}>
         <div
-          className="relative w-full h-[200px] md:h-[250px] bg-black"
+          className="relative w-full h-[200px] md:h-[250px] bg-black overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {!videoReady && (
             <img
               src={banner.image_url}
               alt={banner.title || 'Carregando vídeo'}
-              className="absolute inset-0 z-10 w-full h-full object-cover"
+              className="absolute inset-0 z-10 w-full h-full object-cover object-center"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
           )}
           {embed.mode === 'iframe' ? (
-            <iframe
-              key={iframeSrc}
-              src={iframeSrc}
-              title={banner.title || 'Vídeo do banner'}
-              className="absolute inset-0 z-[8] w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              onLoad={() => setVideoReady(true)}
-            />
+            /* Bloco 16:9 centralizado: evita faixas pretas laterais quando o banner é mais “largo” que 16:9 */
+            <div className="absolute left-1/2 top-1/2 z-[8] w-full max-w-none -translate-x-1/2 -translate-y-1/2 aspect-video">
+              <iframe
+                key={iframeSrc}
+                src={iframeSrc}
+                title={banner.title || 'Vídeo do banner'}
+                className="absolute inset-0 h-full w-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                onLoad={() => setVideoReady(true)}
+              />
+            </div>
           ) : (
             <video
               ref={videoRef}
               key={embed.src}
               src={embed.src}
-              className="absolute inset-0 z-[8] w-full h-full object-cover"
+              className="absolute inset-0 z-[8] h-full w-full object-cover object-center"
               muted
               playsInline
               autoPlay

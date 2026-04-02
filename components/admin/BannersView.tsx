@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBackdropPointerClose } from '../../hooks/useBackdropPointerClose';
 import { PencilIcon, TrashIcon, PlusCircleIcon } from '../icons';
 
@@ -65,6 +65,12 @@ const BannersView: React.FC = () => {
 
   const normalizeType = (t: string | null | undefined): BannerType =>
     t === 'video' ? 'video' : 'slide';
+
+  const slideBanners = useMemo(
+    () => banners.filter((b) => (b.banner_type || 'slide') !== 'video'),
+    [banners]
+  );
+  const videoBanners = useMemo(() => banners.filter((b) => b.banner_type === 'video'), [banners]);
 
   const handleOpenModal = (banner: Banner | null = null) => {
     if (banner) {
@@ -211,84 +217,208 @@ const BannersView: React.FC = () => {
         </div>
       </div>
 
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5 text-gray-800">
+        <h3 className="text-sm font-bold text-gray-900 mb-3">Proporções ideais (como aparece no site)</h3>
+        <p className="text-xs text-gray-600 mb-4">
+          No topo da página o banner usa <strong>largura total</strong> (até <strong>1200px</strong>) com altura fixa de cerca de{' '}
+          <strong>200px no celular</strong> e <strong>250px no desktop</strong> — formato bem &quot;faixa&quot; (panorâmico). Imagens são
+          cortadas para preencher (<em>object-fit: cover</em>); vídeos incorporados usam área <strong>16:9</strong> centralizada nessa faixa.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg bg-white border border-slate-200 p-3 space-y-2">
+            <p className="text-xs font-semibold text-[#3b200d] uppercase tracking-wide">Imagens (slider)</p>
+            <ul className="text-xs text-gray-700 space-y-1.5 list-disc list-inside leading-relaxed">
+              <li>
+                <strong>Ideal:</strong> panorâmico <strong>~3:1</strong> ou <strong>21:9</strong> — ex.:{' '}
+                <strong>1920×640 px</strong> ou <strong>2400×800 px</strong>. Centralize rostos e textos.
+              </li>
+              <li>
+                <strong>Alternativa:</strong> <strong>16:9</strong> (<strong>1920×1080</strong>); pode cortar um pouco em cima e embaixo.
+              </li>
+              <li>
+                <strong>Largura mínima sugerida:</strong> <strong>1600px</strong> para nitidez no desktop; no mobile usa o mesmo arquivo.
+              </li>
+            </ul>
+          </div>
+          <div className="rounded-lg bg-white border border-slate-200 p-3 space-y-2">
+            <p className="text-xs font-semibold text-[#3b200d] uppercase tracking-wide">Vídeo</p>
+            <ul className="text-xs text-gray-700 space-y-1.5 list-disc list-inside leading-relaxed">
+              <li>
+                <strong>Ideal:</strong> <strong>16:9</strong> (padrão YouTube/Vimeo) — <strong>1920×1080</strong> ou{' '}
+                <strong>1280×720</strong>.
+              </li>
+              <li>
+                <strong>Mobile e desktop:</strong> o mesmo vídeo; o player mantém 16:9 e o excesso vertical da faixa é cortado no site.
+              </li>
+              <li>
+                <strong>Miniatura (URL da imagem):</strong> prefira <strong>16:9</strong> ou a mesma proporção dos slides (~3:1) para
+                combinar com o corte do banner.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {error && <div className="mb-4 text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-lg">{error}</div>}
 
       {loading && banners.length === 0 && (
         <div className="text-center text-gray-600 py-8">Carregando...</div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {banners.map((banner) => {
-          const isVideo = normalizeType(banner.banner_type) === 'video';
-          return (
-            <div key={banner.id} className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-              <div className="relative">
-                <img
-                  src={banner.image_url}
-                  alt={banner.title || 'Banner'}
-                  className="w-full h-48 object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                {isVideo && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none">
-                    <span className="rounded-full bg-white/90 w-14 h-14 flex items-center justify-center shadow-lg">
-                      <svg className="w-8 h-8 text-[#3b200d] ml-1" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </span>
-                  </div>
-                )}
-                <div className="absolute top-2 left-2 flex gap-2">
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-semibold ${
-                      isVideo ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
-                    }`}
-                  >
-                    {isVideo ? 'Vídeo' : 'Slide'}
-                  </span>
-                </div>
-                <div className="absolute top-2 right-2">
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-semibold ${
-                      banner.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
-                    }`}
-                  >
-                    {banner.is_active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </div>
+      <div className="space-y-10">
+        {slideBanners.length > 0 && (
+          <section className="space-y-4" aria-labelledby="banners-imagens-heading">
+            <div className="flex flex-wrap items-end justify-between gap-2 border-b border-gray-200 pb-3">
+              <div>
+                <h3 id="banners-imagens-heading" className="text-lg font-bold text-gray-900">
+                  Imagens (slider)
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Banners exibidos no carrossel quando o topo do site está em modo slider. Use o guia de proporções acima ao exportar as imagens.
+                </p>
               </div>
-              <div className="p-4">
-                {banner.title && <h3 className="font-bold text-gray-900 mb-1">{banner.title}</h3>}
-                {banner.description && (
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">{banner.description}</p>
-                )}
-                <div className="flex items-center justify-between mt-4">
-                  <span className="text-xs text-gray-500">Ordem: {banner.display_order}</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOpenModal(banner)}
-                      className="text-gray-700 hover:text-blue-600"
-                      title="Editar"
-                      type="button"
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteBanner(banner.id)}
-                      className="text-gray-700 hover:text-red-600"
-                      title="Excluir"
-                      type="button"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <span className="text-sm text-gray-500">{slideBanners.length} item(ns)</span>
             </div>
-          );
-        })}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {slideBanners.map((banner) => (
+                  <div key={banner.id} className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+                    <div className="relative">
+                      <img
+                        src={banner.image_url}
+                        alt={banner.title || 'Banner'}
+                        className="w-full h-48 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 flex gap-2">
+                        <span className="px-2 py-1 rounded text-xs font-semibold bg-blue-600 text-white">Slide</span>
+                      </div>
+                      <div className="absolute top-2 right-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-semibold ${
+                            banner.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                          }`}
+                        >
+                          {banner.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      {banner.title && <h3 className="font-bold text-gray-900 mb-1">{banner.title}</h3>}
+                      {banner.description && (
+                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">{banner.description}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-4">
+                        <span className="text-xs text-gray-500">Ordem: {banner.display_order}</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleOpenModal(banner)}
+                            className="text-gray-700 hover:text-blue-600"
+                            title="Editar"
+                            type="button"
+                          >
+                            <PencilIcon className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBanner(banner.id)}
+                            className="text-gray-700 hover:text-red-600"
+                            title="Excluir"
+                            type="button"
+                          >
+                            <TrashIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {videoBanners.length > 0 && (
+          <section className="space-y-4" aria-labelledby="banners-videos-heading">
+            <div className="flex flex-wrap items-end justify-between gap-2 border-b border-gray-200 pb-3">
+              <div>
+                <h3 id="banners-videos-heading" className="text-lg font-bold text-gray-900">
+                  Vídeos
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Banner de vídeo do topo (primeiro ativo na ordem) quando o site está em modo vídeo. Prefira vídeo em 16:9 — veja o guia acima.
+                </p>
+              </div>
+              <span className="text-sm text-gray-500">{videoBanners.length} item(ns)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {videoBanners.map((banner) => (
+                <div key={banner.id} className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+                  <div className="relative">
+                    <img
+                      src={banner.image_url}
+                      alt={banner.title || 'Banner'}
+                      className="w-full h-48 object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none">
+                      <span className="rounded-full bg-white/90 w-14 h-14 flex items-center justify-center shadow-lg">
+                        <svg className="w-8 h-8 text-[#3b200d] ml-1" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </span>
+                    </div>
+                    <div className="absolute top-2 left-2 flex gap-2">
+                      <span className="px-2 py-1 rounded text-xs font-semibold bg-purple-600 text-white">Vídeo</span>
+                    </div>
+                    <div className="absolute top-2 right-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-semibold ${
+                          banner.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                        }`}
+                      >
+                        {banner.is_active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    {banner.title && <h3 className="font-bold text-gray-900 mb-1">{banner.title}</h3>}
+                    {banner.description && (
+                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">{banner.description}</p>
+                    )}
+                    {banner.video_url && (
+                      <p className="text-xs text-gray-500 truncate mb-2" title={banner.video_url}>
+                        {banner.video_url}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-xs text-gray-500">Ordem: {banner.display_order}</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleOpenModal(banner)}
+                          className="text-gray-700 hover:text-blue-600"
+                          title="Editar"
+                          type="button"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBanner(banner.id)}
+                          className="text-gray-700 hover:text-red-600"
+                          title="Excluir"
+                          type="button"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       {banners.length === 0 && !loading && (
@@ -333,6 +463,10 @@ const BannersView: React.FC = () => {
                   <label htmlFor="image_url" className="block text-sm font-medium text-gray-700 mb-1">
                     URL da Imagem <span className="text-red-500">*</span>
                   </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Ideal ~<strong>3:1</strong> ou <strong>21:9</strong> (ex.: 1920×640 px); aceita <strong>16:9</strong>. Largura mínima sugerida{' '}
+                    <strong>1600px</strong>.
+                  </p>
                   <input
                     type="url"
                     id="image_url"
@@ -360,6 +494,9 @@ const BannersView: React.FC = () => {
                     <label htmlFor="video_url" className="block text-sm font-medium text-gray-700 mb-1">
                       URL do vídeo <span className="text-red-500">*</span>
                     </label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Prefira vídeo em <strong>16:9</strong> (ex.: <strong>1920×1080</strong> ou <strong>1280×720</strong>) — padrão YouTube/Vimeo.
+                    </p>
                     <input
                       type="url"
                       id="video_url"
@@ -377,7 +514,9 @@ const BannersView: React.FC = () => {
                     <label htmlFor="image_url_video" className="block text-sm font-medium text-gray-700 mb-1">
                       URL da miniatura <span className="text-red-500">*</span>
                     </label>
-                    <p className="text-xs text-gray-500 mb-2">Exibida até o vídeo terminar de carregar.</p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Exibida até o vídeo carregar. Recomendado <strong>16:9</strong> ou a mesma proporção dos slides (~3:1).
+                    </p>
                     <input
                       type="url"
                       id="image_url_video"
