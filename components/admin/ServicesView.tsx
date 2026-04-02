@@ -102,22 +102,26 @@ const ServicesView: React.FC = () => {
         serviceId = data?.id;
       }
       
-      // Gerenciar variações de preço
+      // Gerenciar variações de preço (API usa ?action=variation — precisa bater nas rotas certas)
       if (serviceId && service.price_variations) {
-        // Buscar variações existentes
         const existingRes = await fetch(`/api/services?action=variation&service_id=${serviceId}`);
-        const existingData = await existingRes.json().catch(() => ({ variations: [] }));
-        const existingVariations = existingData.variations || [];
-        
-        // Deletar variações que não estão mais na lista
+        const existingData = await existingRes.json().catch(() => ({}));
+        if (!existingRes.ok) {
+          throw new Error((existingData as { error?: string }).error || 'Erro ao carregar variações de preço');
+        }
+        const existingVariations = (existingData as { variations?: { id: number }[] }).variations || [];
+
         for (const existing of existingVariations) {
-          const stillExists = service.price_variations.some(v => v.id === existing.id);
+          const stillExists = service.price_variations!.some(v => v.id === existing.id);
           if (!stillExists) {
-            await fetch(`/api/services?action=variation&id=${existing.id}`, { method: 'DELETE' });
+            const delRes = await fetch(`/api/services?action=variation&id=${existing.id}`, { method: 'DELETE' });
+            const delData = await delRes.json().catch(() => ({}));
+            if (!delRes.ok) {
+              throw new Error((delData as { error?: string }).error || 'Erro ao remover variação de preço');
+            }
           }
         }
-        
-        // Criar ou atualizar variações
+
         for (let i = 0; i < service.price_variations.length; i++) {
           const variation = service.price_variations[i];
           const variationData = {
@@ -125,10 +129,9 @@ const ServicesView: React.FC = () => {
             service_id: serviceId,
             display_order: i,
           };
-          
+
           if (variation.id) {
-            // Atualizar existente
-            await fetch('/api/services?action=variation', {
+            const vRes = await fetch('/api/services?action=variation', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -138,22 +141,35 @@ const ServicesView: React.FC = () => {
                 display_order: i,
               }),
             });
+            const vData = await vRes.json().catch(() => ({}));
+            if (!vRes.ok) {
+              throw new Error((vData as { error?: string }).error || 'Erro ao atualizar variação de preço');
+            }
           } else {
-            // Criar nova
-            await fetch('/api/services?action=variation', {
+            const vRes = await fetch('/api/services?action=variation', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(variationData),
             });
+            const vData = await vRes.json().catch(() => ({}));
+            if (!vRes.ok) {
+              throw new Error((vData as { error?: string }).error || 'Erro ao criar variação de preço');
+            }
           }
         }
       } else if (serviceId && (!service.price_variations || service.price_variations.length === 0)) {
-        // Se não há variações, deletar todas as existentes
         const existingRes = await fetch(`/api/services?action=variation&service_id=${serviceId}`);
-        const existingData = await existingRes.json().catch(() => ({ variations: [] }));
-        const existingVariations = existingData.variations || [];
+        const existingData = await existingRes.json().catch(() => ({}));
+        if (!existingRes.ok) {
+          throw new Error((existingData as { error?: string }).error || 'Erro ao carregar variações de preço');
+        }
+        const existingVariations = (existingData as { variations?: { id: number }[] }).variations || [];
         for (const existing of existingVariations) {
-          await fetch(`/api/services?action=variation&id=${existing.id}`, { method: 'DELETE' });
+          const delRes = await fetch(`/api/services?action=variation&id=${existing.id}`, { method: 'DELETE' });
+          const delData = await delRes.json().catch(() => ({}));
+          if (!delRes.ok) {
+            throw new Error((delData as { error?: string }).error || 'Erro ao remover variação de preço');
+          }
         }
       }
       
