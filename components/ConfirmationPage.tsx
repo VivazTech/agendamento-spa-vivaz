@@ -10,7 +10,10 @@ interface ConfirmationPageProps {
 
 const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooking }) => {
   const { services, date, time, client } = booking;
-  const totalDuration = services.reduce((total, s) => total + s.duration, 0);
+  const totalDuration = services.reduce((total, s) => {
+    if (s.selectedVariation) return total + s.selectedVariation.duration_minutes;
+    return total + s.duration;
+  }, 0);
   const totalPrice = services.reduce((total, s) => total + s.price, 0);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -63,9 +66,14 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
           <h4 className="font-semibold text-[#5b3310] mb-2">Serviços</h4>
           <ul className="space-y-1">
             {services.map(s => (
-              <li key={s.id} className="flex justify-between text-gray-700">
-                <span>{s.name}</span>
-                <span>R${s.price.toFixed(2)}</span>
+              <li key={s.id} className="flex justify-between text-gray-700 gap-2">
+                <span>
+                  {s.name}
+                  {s.selectedVariation?.label ? (
+                    <span className="text-xs text-gray-500 block">{s.selectedVariation.label}</span>
+                  ) : null}
+                </span>
+                <span className="flex-shrink-0">R${s.price.toFixed(2)}</span>
               </li>
             ))}
           </ul>

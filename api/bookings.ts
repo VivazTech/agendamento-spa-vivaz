@@ -246,7 +246,13 @@ export default async function handler(req: any, res: any) {
 			if (serviceIds.length) {
 				const { data: foundServices, error: svcErr } = await supabase
 					.from('services')
-					.select('id, responsible_professional_id')
+					.select(
+						`
+            id,
+            responsible_professional_id,
+            service_professionals ( professional_id )
+          `
+					)
 					.in('id', serviceIds);
 				if (svcErr) {
 					return res.status(500).json({ ok: false, error: svcErr.message });
@@ -261,20 +267,56 @@ export default async function handler(req: any, res: any) {
 						details: { sent: serviceIds, found: Array.from(foundIds) }
 					});
 				}
-				// inferir profissional se não foi passado e todos os serviços apontam para o mesmo responsável não-nulo
-				const distinctPros = Array.from(new Set((foundServices || [])
-					.map((r: any) => r.responsible_professional_id)
-					.filter((v: any) => v != null)));
+
+				const professionalSetForRow = (r: Record<string, unknown>): Set<string> => {
+					const links = (r.service_professionals as Array<{ professional_id?: string }> | null) || [];
+					const fromJunction = links.map((x) => x.professional_id).filter(Boolean).map(String);
+					if (fromJunction.length) return new Set(fromJunction);
+					const leg = r.responsible_professional_id;
+					if (leg) return new Set([String(leg)]);
+					return new Set();
+				};
+
+				const constrainedSets = (foundServices || [])
+					.map((r) => professionalSetForRow(r as Record<string, unknown>))
+					.filter((s) => s.size > 0);
+
+				const intersect = (sets: Set<string>[]): Set<string> => {
+					if (sets.length === 0) return new Set();
+					let acc = new Set(sets[0]);
+					for (let i = 1; i < sets.length; i++) {
+						acc = new Set([...acc].filter((x) => sets[i].has(x)));
+					}
+					return acc;
+				};
+
 				if (!professionalId) {
-					if (distinctPros.length === 1) {
-						inferredProfessionalId = String(distinctPros[0]);
-					} else if (distinctPros.length > 1) {
-						return res.status(400).json({
-							ok: false,
-							code: 'SERVICES_WITH_DIFFERENT_PROFESSIONALS',
-							error: 'Os serviços selecionados possuem profissionais responsáveis diferentes. Escolha um profissional.',
-							details: { serviceIds, distinctPros }
-						});
+					if (constrainedSets.length === 0) {
+						inferredProfessionalId = null;
+					} else if (constrainedSets.length === 1) {
+						const only = constrainedSets[0];
+						inferredProfessionalId = only.size === 1 ? [...only][0] : null;
+					} else {
+						const inter = intersect(constrainedSets);
+						if (inter.size === 1) {
+							inferredProfessionalId = [...inter][0];
+						} else if (inter.size === 0) {
+							return res.status(400).json({
+								ok: false,
+								code: 'SERVICES_NO_COMMON_PROFESSIONAL',
+								error:
+									'Não há profissional em comum entre os serviços escolhidos. Ajuste a seleção ou informe o profissional no agendamento.',
+								details: { serviceIds },
+							});
+						} else {
+							return res.status(400).json({
+								ok: false,
+								code: 'SERVICES_WITH_DIFFERENT_PROFESSIONALS',
+								error:
+									'Vários profissionais podem atender esta combinação de serviços. Escolha um profissional.',
+								details: { serviceIds },
+							});
+						}
 					}
 				}
 			}

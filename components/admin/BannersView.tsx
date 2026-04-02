@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useBackdropPointerClose } from '../../hooks/useBackdropPointerClose';
 import { PencilIcon, TrashIcon, PlusCircleIcon } from '../icons';
 
 type BannerType = 'slide' | 'video';
@@ -51,6 +52,13 @@ const BannersView: React.FC = () => {
     load();
   }, []);
 
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setEditingBanner(null);
+  }, []);
+
+  const backdropClose = useBackdropPointerClose(handleCloseModal);
+
   const normalizeType = (t: string | null | undefined): BannerType =>
     t === 'video' ? 'video' : 'slide';
 
@@ -81,11 +89,6 @@ const BannersView: React.FC = () => {
       });
     }
     setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingBanner(null);
   };
 
   const handleSaveBanner = async (e: React.FormEvent) => {
@@ -246,14 +249,16 @@ const BannersView: React.FC = () => {
       )}
 
       {isModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
-          onClick={handleCloseModal}
-        >
-          <div
-            className="bg-white p-8 rounded-xl border border-gray-300 shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain">
+          <div className="relative flex min-h-[100dvh] w-full items-center justify-center px-4 py-8 box-border">
+            <div
+              aria-hidden
+              className="absolute inset-0 min-h-full bg-black/70 backdrop-blur-sm"
+              onPointerDown={backdropClose.onBackdropPointerDown}
+              onPointerUp={backdropClose.onBackdropPointerUp}
+            />
+            <div className="relative z-10 w-full max-w-2xl pointer-events-none flex justify-center">
+              <div className="pointer-events-auto w-full max-h-[min(88dvh,calc(100dvh-4rem))] overflow-y-auto overscroll-contain rounded-xl border border-gray-300 bg-white p-6 shadow-2xl sm:p-8">
             <h2 className="text-2xl font-bold mb-6">{editingBanner ? 'Editar Banner' : 'Novo Banner'}</h2>
             <form onSubmit={handleSaveBanner} className="space-y-4">
               <div>
@@ -435,6 +440,8 @@ const BannersView: React.FC = () => {
                 </button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
         </div>
       )}

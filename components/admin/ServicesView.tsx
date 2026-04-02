@@ -25,6 +25,18 @@ const ServiceThumb: React.FC<{ url?: string | null; label: string }> = ({ url, l
   );
 };
 
+function serviceUsesVariations(s: Service): boolean {
+  return Array.isArray(s.price_variations) && s.price_variations.length > 0;
+}
+
+function isServiceTypeMode(s: Service): boolean {
+  return s.variation_mode === 'service_type';
+}
+
+function professionalColumnLabel(s: Service): string {
+  return (s.serviceProfessionals?.length ?? 0) > 1 ? 'Profissionais' : 'Profissional';
+}
+
 const ServicesView: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,8 +88,10 @@ const ServicesView: React.FC = () => {
             duration: service.duration,
             description: service.description,
             responsibleProfessionalId: service.responsibleProfessionalId ?? null,
+            professional_ids: service.professionalIds ?? [],
             category: service.category ?? null,
             image_url: service.image_url ?? null,
+            variation_mode: service.variation_mode ?? 'fixed',
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -93,8 +107,10 @@ const ServicesView: React.FC = () => {
             duration: service.duration,
             description: service.description,
             responsibleProfessionalId: service.responsibleProfessionalId ?? null,
+            professional_ids: service.professionalIds ?? [],
             category: service.category ?? null,
             image_url: service.image_url ?? null,
+            variation_mode: service.variation_mode ?? 'fixed',
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -122,12 +138,16 @@ const ServicesView: React.FC = () => {
           }
         }
 
+        const vKind = service.variation_mode === 'service_type' ? 'service_type' : 'duration';
+
         for (let i = 0; i < service.price_variations.length; i++) {
           const variation = service.price_variations[i];
           const variationData = {
             ...variation,
             service_id: serviceId,
             display_order: i,
+            variation_kind: vKind,
+            label: vKind === 'service_type' ? (variation.label || '').trim() || null : null,
           };
 
           if (variation.id) {
@@ -139,6 +159,8 @@ const ServicesView: React.FC = () => {
                 duration_minutes: variation.duration_minutes,
                 price: variation.price,
                 display_order: i,
+                variation_kind: vKind,
+                label: vKind === 'service_type' ? (variation.label || '').trim() || null : null,
               }),
             });
             const vData = await vRes.json().catch(() => ({}));
@@ -219,7 +241,7 @@ const ServicesView: React.FC = () => {
             <tr>
               <th className="p-4 font-semibold w-[88px]">Imagem</th>
               <th className="p-4 font-semibold">Serviço</th>
-              <th className="p-4 font-semibold">Profissional</th>
+              <th className="p-4 font-semibold">Profissionais</th>
               <th className="p-4 font-semibold text-center">Duração</th>
               <th className="p-4 font-semibold text-center">Preço</th>
               <th className="p-4 font-semibold text-right">Ações</th>
@@ -238,11 +260,49 @@ const ServicesView: React.FC = () => {
                 <td className="p-4">
                   <span className="text-gray-200">{service.responsibleProfessionalName || '—'}</span>
                 </td>
-                <td className="p-4 text-center">
-                    <span className="flex items-center justify-center"><ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]"/> {service.duration} min</span>
+                <td className="p-4 text-center align-top">
+                  {serviceUsesVariations(service) ? (
+                    <ul className="text-sm space-y-2">
+                      {service.price_variations!.map((v, i) => (
+                        <li key={v.id ?? `v-${i}`} className="text-gray-800">
+                          {isServiceTypeMode(service) ? (
+                            <>
+                              <span className="font-medium block">{v.label || '—'}</span>
+                              <span className="text-xs text-gray-500 flex items-center justify-center gap-1 mt-0.5">
+                                <ClockIcon className="w-3.5 h-3.5 text-[#5b3310]" />
+                                {v.duration_minutes} min
+                              </span>
+                            </>
+                          ) : (
+                            <span className="flex items-center justify-center gap-1.5">
+                              <ClockIcon className="w-4 h-4 text-[#5b3310] flex-shrink-0" />
+                              {v.duration_minutes} min
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      <ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> {service.duration} min
+                    </span>
+                  )}
                 </td>
-                <td className="p-4 text-center">
-                    <span className="flex items-center justify-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]"/> R${service.price.toFixed(2)}</span>
+                <td className="p-4 text-center align-top">
+                  {serviceUsesVariations(service) ? (
+                    <ul className="text-sm space-y-1.5">
+                      {service.price_variations!.map((v, i) => (
+                        <li key={v.id ?? `p-${i}`} className="flex items-center justify-center gap-1.5 text-gray-800">
+                          <DollarSignIcon className="w-4 h-4 text-[#5b3310] flex-shrink-0" />
+                          R${v.price.toFixed(2)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      <DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> R${service.price.toFixed(2)}
+                    </span>
+                  )}
                 </td>
                 <td className="p-4 text-right">
                     <div className="inline-flex space-x-3">
@@ -266,7 +326,9 @@ const ServicesView: React.FC = () => {
                 <p className="font-bold text-gray-900 truncate">{service.name}</p>
                 <p className="text-sm text-gray-600">{service.description}</p>
                 <p className="text-gray-700 text-sm mt-1">
-                  {service.responsibleProfessionalName ? `Profissional: ${service.responsibleProfessionalName}` : 'Profissional: —'}
+                  {service.responsibleProfessionalName
+                    ? `${professionalColumnLabel(service)}: ${service.responsibleProfessionalName}`
+                    : `${professionalColumnLabel(service)}: —`}
                 </p>
               </div>
               <div className="inline-flex space-x-3">
@@ -274,9 +336,44 @@ const ServicesView: React.FC = () => {
                 <button onClick={() => handleDeleteService(service.id)} className="text-gray-700 hover:text-red-400"><TrashIcon className="w-5 h-5"/></button>
               </div>
             </div>
-            <div className="flex justify-between text-sm text-gray-700 mt-3">
-              <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]"/> {service.duration} min</span>
-              <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]"/> R${service.price.toFixed(2)}</span>
+            <div className="mt-3 text-sm text-gray-700 space-y-1.5">
+              {serviceUsesVariations(service) ? (
+                service.price_variations!.map((v, i) => (
+                  <div key={v.id ?? `m-${i}`} className="flex justify-between gap-2 items-start">
+                    <span>
+                      {isServiceTypeMode(service) ? (
+                        <>
+                          <span className="font-medium block">{v.label || '—'}</span>
+                          <span className="text-xs text-gray-500 flex items-center mt-0.5">
+                            <ClockIcon className="w-3.5 h-3.5 mr-1 text-[#5b3310]" />
+                            {v.duration_minutes} min
+                          </span>
+                        </>
+                      ) : (
+                        <span className="flex items-center">
+                          <ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" />
+                          {v.duration_minutes} min
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex items-center font-medium flex-shrink-0">
+                      <DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" />
+                      R${v.price.toFixed(2)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex justify-between">
+                  <span className="flex items-center">
+                    <ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" />
+                    {service.duration} min
+                  </span>
+                  <span className="flex items-center">
+                    <DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" />
+                    R${service.price.toFixed(2)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         ))}

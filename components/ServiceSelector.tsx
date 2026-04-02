@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useBackdropPointerClose } from '../hooks/useBackdropPointerClose';
 import { Service, PriceVariation } from '../types';
 import { CheckCircleIcon, PlusCircleIcon, ClockIcon, DollarSignIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
 
@@ -17,6 +18,10 @@ interface ServiceSelectorProps {
   onNext: () => void;
   totalDuration: number;
   totalPrice: number;
+}
+
+function isServiceTypeVariations(s: Service): boolean {
+  return s.variation_mode === 'service_type';
 }
 
 const ServiceItem: React.FC<{ 
@@ -70,14 +75,14 @@ const ServiceItem: React.FC<{
             <p className="text-gray-600 text-sm mt-1 line-clamp-2">{service.description}</p>
             {service.responsibleProfessionalName && (
               <p className="text-gray-700 text-sm mt-1">
-                Profissional: {service.responsibleProfessionalName}
+                {(service.serviceProfessionals?.length ?? 0) > 1 ? 'Profissionais' : 'Profissional'}:{' '}
+                {service.responsibleProfessionalName}
               </p>
             )}
             {/* Variações de preço ou preço único */}
             {service.price_variations && service.price_variations.length > 0 ? (
               <div className="mt-3 space-y-2">
                 {isSelected && service.selectedVariation ? (
-                  // Mostrar variação selecionada
                   <div 
                     className="bg-[#5b3310] border-2 border-[#5b3310] rounded-lg px-3 py-1.5 cursor-pointer hover:bg-[#6b4020] transition-colors"
                     onClick={(e) => {
@@ -86,8 +91,17 @@ const ServiceItem: React.FC<{
                     }}
                   >
                     <div className="text-xs text-white opacity-90 mb-1">Selecionado:</div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm text-white font-semibold">{service.selectedVariation.duration_minutes} min</div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="text-sm text-white font-semibold">
+                        {isServiceTypeVariations(service) && service.selectedVariation.label
+                          ? service.selectedVariation.label
+                          : `${service.selectedVariation.duration_minutes} min`}
+                        {isServiceTypeVariations(service) && service.selectedVariation.label && (
+                          <span className="block text-[10px] font-normal opacity-90 mt-0.5">
+                            {service.selectedVariation.duration_minutes} min
+                          </span>
+                        )}
+                      </div>
                       <div className="text-base text-white font-bold whitespace-nowrap">
                         <span className="text-[10px]">R$</span> {Math.floor(service.selectedVariation.price)}
                         <span className="text-[10px]">,{String(service.selectedVariation.price.toFixed(2)).split('.')[1]}</span>
@@ -95,17 +109,25 @@ const ServiceItem: React.FC<{
                     </div>
                   </div>
                 ) : (
-                  // Mostrar todas as opções
                   <>
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Opções de duração e preço:</p>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">
+                      {isServiceTypeVariations(service) ? 'Opções por tipo:' : 'Opções de duração e preço:'}
+                    </p>
                     <div className="grid grid-cols-2 gap-2">
                       {service.price_variations.map((variation) => (
                         <div
                           key={variation.id}
                           className="bg-[#f5f0eb] border border-[#dac4b4] rounded-lg p-2 text-center"
                         >
-                          <div className="text-xs text-gray-600">{variation.duration_minutes} min</div>
-                          <div className="text-sm font-bold text-[#5b3310] whitespace-nowrap">
+                          {isServiceTypeVariations(service) ? (
+                            <>
+                              <div className="text-xs font-medium text-gray-800 leading-tight">{variation.label || '—'}</div>
+                              <div className="text-[10px] text-gray-500 mt-0.5">{variation.duration_minutes} min</div>
+                            </>
+                          ) : (
+                            <div className="text-xs text-gray-600">{variation.duration_minutes} min</div>
+                          )}
+                          <div className="text-sm font-bold text-[#5b3310] whitespace-nowrap mt-1">
                             <span className="text-[10px]">R$</span> {Math.floor(variation.price)}
                             <span className="text-[10px]">,{String(variation.price.toFixed(2)).split('.')[1]}</span>
                           </div>
@@ -149,7 +171,11 @@ const BookingSummary: React.FC<{
                   <div>
                     <span className="font-medium">{s.name}</span>
                     {s.selectedVariation && (
-                      <span className="text-xs text-gray-500 block">({s.selectedVariation.duration_minutes} min)</span>
+                      <span className="text-xs text-gray-500 block">
+                        {isServiceTypeVariations(s) && s.selectedVariation.label
+                          ? `${s.selectedVariation.label} · ${s.selectedVariation.duration_minutes} min`
+                          : `(${s.selectedVariation.duration_minutes} min)`}
+                      </span>
                     )}
                   </div>
                   <span>R${displayPrice.toFixed(2)}</span>
@@ -226,19 +252,23 @@ const VariationSelectionModal: React.FC<{
   onSelect: (variation: PriceVariation) => void;
   onClose: () => void;
 }> = ({ service, onSelect, onClose }) => {
+  const backdropClose = useBackdropPointerClose(onClose);
+
   if (!service.price_variations || service.price_variations.length === 0) {
     return null;
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl border border-gray-300 shadow-2xl w-full max-w-md"
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain">
+      <div className="relative flex min-h-[100dvh] w-full items-center justify-center px-4 py-8 box-border">
+        <div
+          aria-hidden
+          className="absolute inset-0 min-h-full bg-black/70 backdrop-blur-sm"
+          onPointerDown={backdropClose.onBackdropPointerDown}
+          onPointerUp={backdropClose.onBackdropPointerUp}
+        />
+        <div className="relative z-10 w-full max-w-md pointer-events-none flex justify-center">
+          <div className="pointer-events-auto w-full max-h-[min(88dvh,calc(100dvh-4rem))] overflow-y-auto overscroll-contain rounded-2xl border border-gray-300 bg-white shadow-2xl">
         {service.image_url && (
           <div className="w-full h-48 overflow-hidden bg-gray-100 rounded-t-2xl">
             <img
@@ -256,30 +286,47 @@ const VariationSelectionModal: React.FC<{
           {service.description && (
             <p className="text-gray-600 text-sm mb-6">{service.description}</p>
           )}
-          <p className="text-sm font-semibold text-gray-700 mb-4">Escolha a duração e preço:</p>
+          <p className="text-sm font-semibold text-gray-700 mb-4">
+            {isServiceTypeVariations(service) ? 'Escolha o tipo e o valor:' : 'Escolha a duração e preço:'}
+          </p>
           <div className="space-y-3">
             {service.price_variations.map((variation) => (
               <button
                 key={variation.id}
+                type="button"
                 onClick={() => onSelect(variation)}
                 className="w-full bg-white border-2 border-gray-300 hover:border-[#5b3310] rounded-xl p-4 text-left transition-all duration-200 hover:bg-[#f5f0eb]"
               >
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <ClockIcon className="w-5 h-5 text-[#5b3310]" />
-                    <span className="font-semibold text-gray-900">{variation.duration_minutes} minutos</span>
+                <div className="flex justify-between items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <ClockIcon className="w-5 h-5 text-[#5b3310] flex-shrink-0" />
+                    <div className="min-w-0">
+                      {isServiceTypeVariations(service) ? (
+                        <>
+                          <span className="font-semibold text-gray-900 block truncate">
+                            {variation.label || 'Opção'}
+                          </span>
+                          <span className="text-sm text-gray-600">{variation.duration_minutes} minutos</span>
+                        </>
+                      ) : (
+                        <span className="font-semibold text-gray-900">{variation.duration_minutes} minutos</span>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-lg font-bold text-[#5b3310]">R$ {variation.price.toFixed(2)}</span>
+                  <span className="text-lg font-bold text-[#5b3310] flex-shrink-0">R$ {variation.price.toFixed(2)}</span>
                 </div>
               </button>
             ))}
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="w-full mt-6 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-lg transition-colors"
           >
             Cancelar
           </button>
+        </div>
+          </div>
         </div>
       </div>
     </div>
@@ -382,7 +429,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
     );
     
     if (servicesWithVariations.length > 0 && !allHaveSelectedVariation) {
-      alert('Por favor, selecione uma opção de duração e preço para todos os serviços que têm variações.');
+      alert('Por favor, selecione uma opção de preço para todos os serviços com variações.');
       return;
     }
     

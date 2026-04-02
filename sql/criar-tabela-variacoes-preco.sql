@@ -1,7 +1,11 @@
 -- =====================================================
 -- CRIAR TABELA DE VARIAÇÕES DE PREÇO DOS SERVIÇOS
 -- =====================================================
--- Execute este script no Supabase SQL Editor
+-- Execute no Supabase SQL Editor.
+--
+-- Se a tabela JÁ EXISTIR (versão antiga sem variation_kind), o CREATE
+-- é ignorado; os ALTER abaixo acrescentam colunas e constraints.
+-- Para só migrar um banco antigo, pode usar sql/alter-service-variation-type.sql
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS public.service_price_variations (
@@ -10,10 +14,28 @@ CREATE TABLE IF NOT EXISTS public.service_price_variations (
     duration_minutes INTEGER NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
     display_order INTEGER DEFAULT 0,
+    variation_kind TEXT NOT NULL DEFAULT 'duration',
+    label TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(service_id, duration_minutes)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Banco já existente sem estas colunas: CREATE acima não altera a tabela
+ALTER TABLE public.service_price_variations
+  DROP CONSTRAINT IF EXISTS service_price_variations_service_id_duration_minutes_key;
+
+ALTER TABLE public.service_price_variations
+  ADD COLUMN IF NOT EXISTS variation_kind TEXT NOT NULL DEFAULT 'duration';
+
+ALTER TABLE public.service_price_variations
+  ADD COLUMN IF NOT EXISTS label TEXT;
+
+ALTER TABLE public.service_price_variations
+  DROP CONSTRAINT IF EXISTS service_price_variations_variation_kind_check;
+
+ALTER TABLE public.service_price_variations
+  ADD CONSTRAINT service_price_variations_variation_kind_check
+  CHECK (variation_kind IN ('duration', 'service_type'));
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_service_price_variations_service_id ON public.service_price_variations(service_id);
@@ -47,10 +69,12 @@ CREATE POLICY "Service price variations are writable by service role" ON public.
     USING (true)
     WITH CHECK (true);
 
-COMMENT ON TABLE public.service_price_variations IS 'Variações de preço por duração dos serviços';
-COMMENT ON COLUMN public.service_price_variations.duration_minutes IS 'Duração em minutos para esta variação';
-COMMENT ON COLUMN public.service_price_variations.price IS 'Preço para esta duração';
+COMMENT ON TABLE public.service_price_variations IS 'Variações de preço (por duração ou por tipo de serviço)';
+COMMENT ON COLUMN public.service_price_variations.duration_minutes IS 'Duração em minutos para esta opção (agendamento)';
+COMMENT ON COLUMN public.service_price_variations.price IS 'Preço desta opção';
 COMMENT ON COLUMN public.service_price_variations.display_order IS 'Ordem de exibição das variações';
+COMMENT ON COLUMN public.service_price_variations.variation_kind IS 'duration | service_type';
+COMMENT ON COLUMN public.service_price_variations.label IS 'Rótulo quando variation_kind = service_type (ex. Cabelo curto)';
 
 -- =====================================================
 -- FIM DO SCRIPT
