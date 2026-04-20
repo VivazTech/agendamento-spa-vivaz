@@ -21,7 +21,7 @@ type BookingRow = {
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
   professional_id: string | null;
-  status?: string; // 'scheduled', 'completed', 'cancelled', etc.
+  status?: 'pending' | 'scheduled' | 'rejected' | 'completed' | 'cancelled' | string;
   client_id: string;
   client_name: string;
   client_phone: string;
@@ -103,7 +103,10 @@ const AppointmentsView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [professionalId, serviceId, clientQuery, time, timeFrom, timeTo]);
 
-  const updateBookingStatus = async (bookingId: string, newStatus: 'scheduled' | 'completed') => {
+  const updateBookingStatus = async (
+    bookingId: string,
+    newStatus: 'pending' | 'scheduled' | 'rejected' | 'completed' | 'cancelled'
+  ) => {
     setUpdatingStatus(bookingId);
     try {
       const res = await fetch('/api/bookings', {
@@ -168,9 +171,25 @@ const AppointmentsView: React.FC = () => {
     return Array.from(m.entries()).sort(([a],[b]) => a.localeCompare(b));
   }, [bookings]);
 
+  const statusMeta = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return { label: 'Concluído', className: 'bg-green-100 text-green-800' };
+      case 'scheduled':
+        return { label: 'Aprovado', className: 'bg-blue-100 text-blue-800' };
+      case 'rejected':
+        return { label: 'Recusado', className: 'bg-red-100 text-red-800' };
+      case 'cancelled':
+        return { label: 'Cancelado', className: 'bg-gray-200 text-gray-700' };
+      case 'pending':
+      default:
+        return { label: 'Solicitação pendente', className: 'bg-amber-100 text-amber-800' };
+    }
+  };
+
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Agendamentos</h2>
+      <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Solicitações e Agendamentos</h2>
       <div className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div>
@@ -293,20 +312,38 @@ const AppointmentsView: React.FC = () => {
                     </ul>
                   </div>
                   
-                  {/* Status do agendamento */}
+                  {/* Status da solicitação / agendamento */}
                   <div className="border-t border-gray-300 my-3 pt-3">
+                    {b.status === 'pending' && (
+                      <div className="mb-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                        Esta reserva foi criada pelo cliente como <strong>solicitação</strong>. Cabe ao profissional aprovar ou recusar.
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">Status:</span>
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        b.status === 'completed' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {b.status === 'completed' ? 'Concluído' : 'Agendado'}
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${statusMeta(b.status).className}`}>
+                        {statusMeta(b.status).label}
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      {b.status !== 'completed' ? (
+                      {b.status === 'pending' ? (
+                        <>
+                          <button
+                            onClick={() => updateBookingStatus(b.booking_id, 'scheduled')}
+                            disabled={updatingStatus === b.booking_id}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
+                          >
+                            {updatingStatus === b.booking_id ? 'Atualizando...' : '✓ Aprovar solicitação'}
+                          </button>
+                          <button
+                            onClick={() => updateBookingStatus(b.booking_id, 'rejected')}
+                            disabled={updatingStatus === b.booking_id}
+                            className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
+                          >
+                            {updatingStatus === b.booking_id ? 'Atualizando...' : '✗ Recusar'}
+                          </button>
+                        </>
+                      ) : b.status === 'scheduled' ? (
                         <button
                           onClick={() => updateBookingStatus(b.booking_id, 'completed')}
                           disabled={updatingStatus === b.booking_id}
@@ -314,13 +351,21 @@ const AppointmentsView: React.FC = () => {
                         >
                           {updatingStatus === b.booking_id ? 'Atualizando...' : '✓ Marcar como Concluído'}
                         </button>
-                      ) : (
+                      ) : b.status === 'completed' ? (
                         <button
                           onClick={() => updateBookingStatus(b.booking_id, 'scheduled')}
                           disabled={updatingStatus === b.booking_id}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
                         >
-                          {updatingStatus === b.booking_id ? 'Atualizando...' : '↩ Voltar para Agendado'}
+                          {updatingStatus === b.booking_id ? 'Atualizando...' : '↩ Voltar para Aprovado'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => updateBookingStatus(b.booking_id, 'pending')}
+                          disabled={updatingStatus === b.booking_id}
+                          className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          {updatingStatus === b.booking_id ? 'Atualizando...' : '↺ Reabrir solicitação'}
                         </button>
                       )}
                     </div>

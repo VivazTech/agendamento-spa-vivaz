@@ -129,7 +129,7 @@ const App: React.FC = () => {
       console.log('Resposta recebida:', res.status, res.statusText);
       
       if (!res.ok) {
-        let message = 'Falha ao criar agendamento';
+        let message = 'Falha ao enviar solicitação';
         try {
           const text = await res.text();
           console.error('Erro da API:', text);
@@ -144,13 +144,13 @@ const App: React.FC = () => {
       }
       
       const responseData = await res.json();
-      console.log('Agendamento criado com sucesso:', responseData);
+      console.log('Solicitação enviada com sucesso:', responseData);
       
       setBooking(prev => ({ ...prev, client }));
       setStep('confirmation');
     } catch (e: any) {
-      console.error('Erro ao confirmar agendamento:', e);
-      alert(e?.message || 'Erro ao confirmar agendamento. Verifique o console para mais detalhes.');
+      console.error('Erro ao enviar solicitação de agendamento:', e);
+      alert(e?.message || 'Erro ao enviar solicitação. Verifique o console para mais detalhes.');
     }
   };
 

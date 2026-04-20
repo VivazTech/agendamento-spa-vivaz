@@ -18,12 +18,14 @@ type Row = {
   booking_id: string;
   date: string;
   time: string;
+  status?: 'pending' | 'scheduled' | 'rejected' | 'completed' | 'cancelled' | string;
   services: Array<{ name: string; price: number }>;
   total_price: string;
   reschedule_request?: RescheduleRequest | null;
 };
 
 const ClientBookingsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,22 @@ const ClientBookingsPage: React.FC = () => {
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const statusMeta = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return { label: 'Atendimento concluído', className: 'bg-green-100 text-green-800' };
+      case 'scheduled':
+        return { label: 'Solicitação aceita', className: 'bg-blue-100 text-blue-800' };
+      case 'rejected':
+        return { label: 'Solicitação recusada', className: 'bg-red-100 text-red-800' };
+      case 'cancelled':
+        return { label: 'Cancelado', className: 'bg-gray-200 text-gray-700' };
+      case 'pending':
+      default:
+        return { label: 'Solicitação enviada', className: 'bg-amber-100 text-amber-800' };
+    }
+  };
 
   // Buscar nome do cliente
   useEffect(() => {
@@ -126,6 +144,11 @@ const ClientBookingsPage: React.FC = () => {
                 </div>
                 <div className="text-[#3b200d] font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
               </div>
+              <div className="mt-2">
+                <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${statusMeta(r.status).className}`}>
+                  {statusMeta(r.status).label}
+                </span>
+              </div>
               <div className="text-gray-700 mt-2">
                 {(r.services || []).map(s => s.name).join(', ')}
               </div>
@@ -139,9 +162,7 @@ const ClientBookingsPage: React.FC = () => {
                   <p className="text-xs text-yellow-700 mt-1">
                     Novo horário solicitado: {new Date(r.reschedule_request!.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.reschedule_request!.requested_time.slice(0,5)}
                   </p>
-                  <p className="text-xs text-yellow-600 mt-1">
-                    Aguardando resposta do profissional...
-                  </p>
+                  <p className="text-xs text-yellow-600 mt-1">Aguardando resposta do profissional...</p>
                 </div>
               )}
               

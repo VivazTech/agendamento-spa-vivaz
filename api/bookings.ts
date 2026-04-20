@@ -134,7 +134,7 @@ export default async function handler(req: any, res: any) {
 					time: b.time,
 					professional_id: b.professional_id,
 					professional_name: (b.professionals as { name?: string } | null)?.name ?? null,
-					status: b.status || 'scheduled', // Default para 'scheduled' se não tiver status
+					status: b.status || 'pending', // Default para 'pending' se não tiver status
 					client_id: b.clients?.id,
 					client_name: b.clients?.name,
 					client_phone: b.clients?.phone,
@@ -371,6 +371,7 @@ export default async function handler(req: any, res: any) {
 					time,
 					professional_id: professionalId || inferredProfessionalId,
 					client_id: clientId,
+					status: 'pending',
 				})
 				.select('id')
 				.single();

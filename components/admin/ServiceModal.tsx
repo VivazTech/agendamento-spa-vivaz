@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Service, ServiceVariationMode } from '../../types';
 import { useBackdropPointerClose } from '../../hooks/useBackdropPointerClose';
 import { PlusCircleIcon, TrashIcon } from '../icons';
+import { supabase } from '../../src/lib/supabaseClient';
 
 type VariationRow = {
   id?: number;
@@ -19,6 +20,7 @@ interface ServiceModalProps {
 
 const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave }) => {
   const backdropClose = useBackdropPointerClose(onClose);
+  const serviceImagesBucket = import.meta.env.VITE_SUPABASE_SERVICE_IMAGES_BUCKET || 'service-images';
 
   const [formData, setFormData] = useState<Omit<Service, 'id'>>({
     name: '',
@@ -38,6 +40,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
   const [professionalIds, setProfessionalIds] = useState<string[]>([]);
   const [variationMode, setVariationMode] = useState<ServiceVariationMode>('fixed');
   const [priceVariations, setPriceVariations] = useState<VariationRow[]>([]);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -96,6 +101,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
       } else {
         setPriceVariations([]);
       }
+      setSelectedImage(null);
+      setUploadError(null);
     } else {
       setFormData({
         name: '',
@@ -111,6 +118,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
       setProfessionalIds([]);
       setVariationMode('fixed');
       setPriceVariations([]);
+      setSelectedImage(null);
+      setUploadError(null);
     }
   }, [service]);
 
@@ -153,8 +162,74 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     setPriceVariations(updated);
   };
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setUploadError(null);
+    if (!file) {
+      setSelectedImage(null);
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError('Formato inválido. Envie apenas JPG, JPEG ou PNG.');
+      setSelectedImage(null);
+      return;
+    }
+
+    const maxSizeBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      setUploadError('A imagem deve ter no máximo 5MB.');
+      setSelectedImage(null);
+      return;
+    }
+
+    setSelectedImage(file);
+  };
+
+  const uploadSelectedImage = async (file: File): Promise<string> => {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const safeBaseName = file.name
+      .replace(/\.[^/.]+$/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 60);
+    const filePath = `services/${Date.now()}-${safeBaseName || 'service'}-${crypto.randomUUID()}.${extension}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from(serviceImagesBucket)
+      .upload(filePath, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+
+    if (uploadErr) {
+      throw new Error(uploadErr.message || 'Falha ao subir imagem.');
+    }
+
+    const { data } = supabase.storage.from(serviceImagesBucket).getPublicUrl(filePath);
+    if (!data?.publicUrl) {
+      throw new Error('Não foi possível obter a URL pública da imagem.');
+    }
+
+    return data.publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let finalImageUrl = formData.image_url ?? null;
+    if (selectedImage) {
+      try {
+        setIsUploadingImage(true);
+        setUploadError(null);
+        finalImageUrl = await uploadSelectedImage(selectedImage);
+      } catch (err: any) {
+        setUploadError(err?.message || 'Erro ao fazer upload da imagem.');
+        setIsUploadingImage(false);
+        return;
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+
     if (!formData.name || !formData.category) {
       alert('Por favor, preencha nome e categoria.');
       return;
@@ -202,6 +277,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
       .filter(Boolean) as string[];
     const serviceToSave = {
       ...formData,
+      image_url: finalImageUrl,
       variation_mode: variationMode,
       price: firstVar ? firstVar.price : formData.price,
       duration: firstVar ? firstVar.duration_minutes : formData.duration,
@@ -254,6 +330,25 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
               placeholder="https://exemplo.com/imagem.jpg"
               className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
             />
+            <label htmlFor="image_file" className="block text-sm font-medium text-gray-700 mt-3 mb-1">
+              Ou subir arquivo (JPG, JPEG, PNG)
+            </label>
+            <input
+              type="file"
+              id="image_file"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              onChange={handleImageFileChange}
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 file:mr-4 file:rounded-md file:border-0 file:bg-[#3b200d] file:px-3 file:py-1.5 file:text-white hover:file:bg-[#5b3310]"
+            />
+            {selectedImage && (
+              <p className="mt-2 text-xs text-gray-600">
+                Arquivo selecionado: {selectedImage.name} ({(selectedImage.size / 1024 / 1024).toFixed(2)} MB).
+                O upload será feito ao salvar.
+              </p>
+            )}
+            {uploadError && (
+              <p className="mt-2 text-xs text-red-600">{uploadError}</p>
+            )}
             {formData.image_url && (
               <div className="mt-2">
                 <img
@@ -455,8 +550,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
             >
               Cancelar
             </button>
-            <button type="submit" className="bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-2 px-5 rounded-lg transition-colors">
-              Salvar
+            <button
+              type="submit"
+              disabled={isUploadingImage}
+              className="bg-[#3b200d] hover:bg-[#5b3310] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-2 px-5 rounded-lg transition-colors"
+            >
+              {isUploadingImage ? 'Enviando imagem...' : 'Salvar'}
             </button>
           </div>
         </form>

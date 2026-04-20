@@ -56,11 +56,13 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
   return (
     <div className="max-w-2xl mx-auto text-center">
       <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
-      <h2 className="text-3xl font-bold text-gray-900 mb-2">Agendamento Confirmado!</h2>
-      <p className="text-gray-700 mb-8">Obrigado, {client.name}. Seu horário está reservado.</p>
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">Solicitação Enviada!</h2>
+      <p className="text-gray-700 mb-8">
+        Obrigado, {client.name}. Sua solicitação foi enviada e aguarda aprovação do profissional.
+      </p>
 
       <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl text-left space-y-6">
-        <h3 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3">Resumo do Agendamento</h3>
+        <h3 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3">Resumo da Solicitação</h3>
         
         <div>
           <h4 className="font-semibold text-[#5b3310] mb-2">Serviços</h4>
@@ -114,7 +116,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         </div>
 
         <p className="text-sm text-center text-gray-600 pt-4">
-          Enviaremos uma confirmação via WhatsApp para <span className="font-semibold text-[#5b3310]">{client.phone}</span> com todos os detalhes.
+          Você receberá atualização via WhatsApp em <span className="font-semibold text-[#5b3310]">{client.phone}</span> quando a solicitação for aprovada ou recusada.
         </p>
       </div>
 
