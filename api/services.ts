@@ -172,6 +172,7 @@ export default async function handler(req: any, res: any) {
           duration_minutes,
           description,
           responsible_professional_id,
+          simultaneous_professionals_required,
           category,
           image_url,
           variation_mode,
@@ -212,6 +213,33 @@ export default async function handler(req: any, res: any) {
 				}
 			}
 
+			/** Substitutos com working_today: exibir nome no lugar da equipe (não altera vagas / profissional_id) */
+			const substituteNamesByServiceId = new Map<number, string[]>();
+			const { data: activeExtras, error: extrasErr } = await supabase
+				.from('extra_workers')
+				.select(
+					`
+          full_name,
+          working_today,
+          extra_worker_services ( service_id )
+        `
+				)
+				.eq('working_today', true);
+			if (!extrasErr && activeExtras) {
+				for (const ex of activeExtras as Array<Record<string, unknown>>) {
+					const fn = String(ex.full_name || '').trim();
+					if (!fn) continue;
+					const links = (ex.extra_worker_services as Array<{ service_id?: number }> | null) || [];
+					for (const link of links) {
+						const sid = Number(link.service_id);
+						if (!Number.isFinite(sid) || sid <= 0) continue;
+						const arr = substituteNamesByServiceId.get(sid) || [];
+						arr.push(fn);
+						substituteNamesByServiceId.set(sid, arr);
+					}
+				}
+			}
+
 			const services = (data || []).map((r: any) => {
 				const vars = variationsMap[r.id] || [];
 				let variationMode = (r.variation_mode as string) || 'fixed';
@@ -219,6 +247,11 @@ export default async function handler(req: any, res: any) {
 					variationMode = vars.some((x: any) => x.variation_kind === 'service_type') ? 'service_type' : 'duration';
 				}
 				const pro = professionalFieldsFromRow(r as Record<string, unknown>);
+				const subNames = substituteNamesByServiceId.get(Number(r.id));
+				const is_substitute_display = Boolean(subNames?.length);
+				const displayName = is_substitute_display
+					? `${(subNames as string[]).join(', ')} (substituto hoje)`
+					: pro.responsibleProfessionalName;
 				return {
 					id: r.id,
 					name: r.name,
@@ -226,8 +259,11 @@ export default async function handler(req: any, res: any) {
 					duration: Number(r.duration_minutes),
 					description: r.description || '',
 					responsibleProfessionalId: pro.responsibleProfessionalId,
-					responsibleProfessionalName: pro.responsibleProfessionalName,
+					responsibleProfessionalName: displayName,
+					is_substitute_display,
 					serviceProfessionals: pro.serviceProfessionals,
+					simultaneous_professionals_required:
+						Number(r.simultaneous_professionals_required) === 2 ? 2 : 1,
 					category: r.category ? Number(r.category) : null,
 					image_url: r.image_url || null,
 					variation_mode: variationMode,
@@ -249,6 +285,7 @@ export default async function handler(req: any, res: any) {
 				category,
 				image_url,
 				variation_mode,
+				simultaneous_professionals_required,
 			} = body as {
 				name?: string;
 				price?: number;
@@ -259,6 +296,7 @@ export default async function handler(req: any, res: any) {
 				category?: number | null;
 				image_url?: string | null;
 				variation_mode?: string | null;
+				simultaneous_professionals_required?: number;
 			};
 			if (!name || !price || !duration || !category) {
 				return res.status(400).json({ ok: false, error: 'name, price, duration e category são obrigatórios' });
@@ -272,6 +310,7 @@ export default async function handler(req: any, res: any) {
 			const firstPro = profIds[0] ?? null;
 			const vMode =
 				variation_mode === 'duration' || variation_mode === 'service_type' ? variation_mode : 'fixed';
+			const requiredProfessionals = Number(simultaneous_professionals_required) === 2 ? 2 : 1;
 			const { data, error } = await supabase
 				.from('services')
 				.insert({
@@ -283,6 +322,7 @@ export default async function handler(req: any, res: any) {
 					category: category,
 					image_url: image_url || null,
 					variation_mode: vMode,
+					simultaneous_professionals_required: requiredProfessionals,
 				})
 				.select('id')
 				.single();
@@ -310,6 +350,7 @@ export default async function handler(req: any, res: any) {
 				category,
 				image_url,
 				variation_mode,
+				simultaneous_professionals_required,
 			} = body as {
 				id?: number;
 				name?: string;
@@ -321,6 +362,7 @@ export default async function handler(req: any, res: any) {
 				category?: number | null;
 				image_url?: string | null;
 				variation_mode?: string | null;
+				simultaneous_professionals_required?: number;
 			};
 			if (!id || !name || !price || !duration || !category) {
 				return res.status(400).json({ ok: false, error: 'id, name, price, duration e category são obrigatórios' });
@@ -335,6 +377,7 @@ export default async function handler(req: any, res: any) {
 				profIdsToSync !== undefined ? profIdsToSync[0] ?? null : undefined;
 			const vMode =
 				variation_mode === 'duration' || variation_mode === 'service_type' ? variation_mode : 'fixed';
+			const requiredProfessionals = Number(simultaneous_professionals_required) === 2 ? 2 : 1;
 			const updateRow: Record<string, unknown> = {
 				name,
 				price,
@@ -343,6 +386,7 @@ export default async function handler(req: any, res: any) {
 				category: category,
 				image_url: image_url || null,
 				variation_mode: vMode,
+				simultaneous_professionals_required: requiredProfessionals,
 			};
 			if (firstPro !== undefined) {
 				updateRow.responsible_professional_id = firstPro;

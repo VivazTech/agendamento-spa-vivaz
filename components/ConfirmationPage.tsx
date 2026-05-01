@@ -9,7 +9,7 @@ interface ConfirmationPageProps {
 }
 
 const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooking }) => {
-  const { services, date, time, client } = booking;
+  const { services, date, time, client, is_courtesy } = booking;
   const totalDuration = services.reduce((total, s) => {
     if (s.selectedVariation) return total + s.selectedVariation.duration_minutes;
     return total + s.duration;
@@ -56,6 +56,11 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
   return (
     <div className="max-w-2xl mx-auto text-center">
       <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
+      {is_courtesy && (
+        <div className="mb-4 inline-block rounded-full border border-amber-300 bg-amber-50 px-4 py-1 text-sm font-semibold tracking-wide text-amber-950">
+          CORTESIA
+        </div>
+      )}
       <h2 className="text-3xl font-bold text-gray-900 mb-2">Solicitação Enviada!</h2>
       <p className="text-gray-700 mb-8">
         Obrigado, {client.name}. Sua solicitação foi enviada e aguarda aprovação do profissional.
@@ -113,6 +118,12 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                     <p className="font-semibold text-gray-900">R${totalPrice.toFixed(2)}</p>
                 </div>
             </div>
+            {client.payment_method_name && (
+              <div className="sm:col-span-2 text-sm text-gray-700">
+                <span className="text-gray-600">Pagamento:</span>{' '}
+                <span className="font-semibold text-gray-900">{client.payment_method_name}</span>
+              </div>
+            )}
         </div>
 
         <p className="text-sm text-center text-gray-600 pt-4">
@@ -138,7 +149,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
         onClick={onNewBooking}
         className="mt-8 bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 shadow-md"
       >
-        Agendar outro horário
+        Nova solicitação
       </button>
 
       {/* Modal de criação de conta via WhatsApp */}

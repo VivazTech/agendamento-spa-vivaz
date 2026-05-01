@@ -9,6 +9,7 @@ type RescheduleRequest = {
   original_date: string;
   original_time: string;
   status: 'pending' | 'accepted' | 'rejected';
+  requested_by?: 'client' | 'admin' | 'professional' | string;
   response_message?: string | null;
   created_at: string;
   responded_at?: string | null;
@@ -132,9 +133,13 @@ const ClientBookingsPage: React.FC = () => {
 
         <div className="space-y-3">
           {rows.map((r) => {
-            const hasPendingRequest = r.reschedule_request?.status === 'pending';
-            const hasAcceptedRequest = r.reschedule_request?.status === 'accepted';
-            const hasRejectedRequest = r.reschedule_request?.status === 'rejected';
+            const rr = r.reschedule_request;
+            const hasPendingClientReschedule =
+              rr?.status === 'pending' && (rr.requested_by === 'client' || !rr.requested_by);
+            const hasPendingAdminProposal = rr?.status === 'pending' && rr.requested_by === 'admin';
+            const hasPendingRequest = hasPendingClientReschedule || hasPendingAdminProposal;
+            const hasAcceptedRequest = rr?.status === 'accepted';
+            const hasRejectedRequest = rr?.status === 'rejected';
             
             return (
             <div key={r.booking_id} className="border border-gray-300 rounded-lg p-4">
@@ -153,38 +158,121 @@ const ClientBookingsPage: React.FC = () => {
                 {(r.services || []).map(s => s.name).join(', ')}
               </div>
               
-              {/* Status da solicitação de reagendamento */}
-              {hasPendingRequest && (
+              {/* Aguardando o espaço responder ao seu pedido de troca */}
+              {hasPendingClientReschedule && (
                 <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800 font-medium">
-                    ⏳ Solicitação de troca de horário pendente
+                    ⏳ Troca de horário enviada
                   </p>
                   <p className="text-xs text-yellow-700 mt-1">
-                    Novo horário solicitado: {new Date(r.reschedule_request!.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.reschedule_request!.requested_time.slice(0,5)}
+                    Novo horário pedido por você: {new Date(rr!.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às{' '}
+                    {rr!.requested_time.slice(0, 5)}
                   </p>
-                  <p className="text-xs text-yellow-600 mt-1">Aguardando resposta do profissional...</p>
+                  <p className="text-xs text-yellow-600 mt-1">Aguardando confirmação do spa.</p>
+                </div>
+              )}
+
+              {/* Spa sugeriu outro horário: você precisa confirmar */}
+              {hasPendingAdminProposal && rr && (
+                <div className="mt-3 p-3 bg-sky-50 border border-sky-200 rounded-lg space-y-2">
+                  <p className="text-sm text-sky-900 font-medium">O spa sugeriu outro horário</p>
+                  <p className="text-xs text-sky-800">
+                    Seu pedido foi para{' '}
+                    {new Date(rr.original_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {rr.original_time.slice(0, 5)}.
+                  </p>
+                  <p className="text-xs text-sky-800">
+                    <span className="font-semibold">Horário sugerido:</span>{' '}
+                    {new Date(rr.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {rr.requested_time.slice(0, 5)}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <button
+                      type="button"
+                      className="px-3 py-2 rounded-lg bg-[#3b200d] text-white text-sm font-semibold hover:bg-[#5b3310] disabled:opacity-50"
+                      disabled={actionLoading === r.booking_id}
+                      onClick={async () => {
+                        try {
+                          setActionLoading(r.booking_id);
+                          const res = await fetch('/api/bookings', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              action: 'respond-reschedule',
+                              request_id: rr.id,
+                              response: 'accept',
+                            }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao confirmar');
+                          const qs = new URLSearchParams({ client: phone });
+                          const refreshRes = await fetch(`/api/bookings?${qs.toString()}`);
+                          const refreshData = await refreshRes.json();
+                          if (refreshRes.ok) setRows((refreshData.bookings || []) as Row[]);
+                        } catch (e: unknown) {
+                          alert(e instanceof Error ? e.message : 'Erro ao confirmar horário');
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      }}
+                    >
+                      {actionLoading === r.booking_id ? 'Salvando...' : 'Confirmar horário sugerido'}
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-2 rounded-lg border border-sky-300 text-sky-900 text-sm hover:bg-white disabled:opacity-50"
+                      disabled={actionLoading === r.booking_id}
+                      onClick={async () => {
+                        if (!confirm('Recusar o horário sugerido e manter sua solicitação no horário que você pediu?')) return;
+                        try {
+                          setActionLoading(r.booking_id);
+                          const res = await fetch('/api/bookings', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              action: 'respond-reschedule',
+                              request_id: rr.id,
+                              response: 'reject',
+                              response_message: 'Cliente recusou o horário alternativo.',
+                            }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok || !data.ok) throw new Error(data?.error || 'Falha ao recusar');
+                          const qs = new URLSearchParams({ client: phone });
+                          const refreshRes = await fetch(`/api/bookings?${qs.toString()}`);
+                          const refreshData = await refreshRes.json();
+                          if (refreshRes.ok) setRows((refreshData.bookings || []) as Row[]);
+                        } catch (e: unknown) {
+                          alert(e instanceof Error ? e.message : 'Erro ao recusar');
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      }}
+                    >
+                      Recusar sugestão
+                    </button>
+                  </div>
                 </div>
               )}
               
-              {hasAcceptedRequest && (
+              {hasAcceptedRequest && rr && (
                 <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-sm text-green-800 font-medium">
-                    ✅ Solicitação de troca aceita
+                    ✅ Troca de horário aceita
                   </p>
                   <p className="text-xs text-green-700 mt-1">
-                    Seu agendamento foi alterado para: {new Date(r.reschedule_request!.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.reschedule_request!.requested_time.slice(0,5)}
+                    Horário combinado: {new Date(rr.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às{' '}
+                    {rr.requested_time.slice(0, 5)}
                   </p>
                 </div>
               )}
               
-              {hasRejectedRequest && (
+              {hasRejectedRequest && rr && (
                 <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-800 font-medium">
-                    ❌ Solicitação de troca negada
+                    ❌ Troca negada ou recusada
                   </p>
-                  {r.reschedule_request!.response_message && (
+                  {rr.response_message && (
                     <p className="text-xs text-red-700 mt-1">
-                      {r.reschedule_request!.response_message}
+                      {rr.response_message}
                     </p>
                   )}
                 </div>
@@ -200,7 +288,11 @@ const ClientBookingsPage: React.FC = () => {
                   }}
                   disabled={hasPendingRequest}
                 >
-                  {hasPendingRequest ? 'Solicitação pendente' : 'Trocar horário'}
+                  {hasPendingRequest
+                    ? hasPendingAdminProposal
+                      ? 'Confirme a sugestão acima'
+                      : 'Aguardando resposta da troca'
+                    : 'Trocar horário'}
                 </button>
                 <button
                   className="px-3 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50"

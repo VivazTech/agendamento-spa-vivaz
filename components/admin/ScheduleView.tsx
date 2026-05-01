@@ -11,6 +11,9 @@ type BookingRow = {
   date: string; // yyyy-mm-dd
   time: string; // HH:MM:SS
   professional_id: string | null;
+  /** pending = solicitação; scheduled = aceito no calendário */
+  status?: string;
+  is_courtesy?: boolean;
   professional_name?: string | null;
   client_id: string;
   client_name: string;
@@ -118,6 +121,26 @@ const ScheduleView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, view, currentDate]);
 
+  const scheduleStatusBadge = (s?: string) => {
+    switch (s) {
+      case 'pending':
+        return <span className="text-[10px] uppercase font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">solicitação</span>;
+      case 'scheduled':
+      case 'completed':
+        return null;
+      case 'rejected':
+      case 'cancelled':
+        return <span className="text-[10px] uppercase font-bold text-red-700 bg-red-50 px-1.5 py-0.5 rounded">{s === 'cancelled' ? 'cancelado' : 'recusado'}</span>;
+      default:
+        return null;
+    }
+  };
+
+  const courtesyBadge = (b: BookingRow) =>
+    b.is_courtesy ? (
+      <span className="text-[10px] font-bold text-amber-950 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 shrink-0">CORTESIA</span>
+    ) : null;
+
   const grouped = useMemo(() => {
     const groups = new Map<string, BookingRow[]>();
     bookings.forEach(b => {
@@ -128,6 +151,10 @@ const ScheduleView: React.FC = () => {
     });
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [bookings]);
+
+  const monthSelectedRows = monthSelectedDate
+    ? (grouped.find(([d]) => d === formatDate(monthSelectedDate))?.[1] || []).sort((a, b) => a.time.localeCompare(b.time))
+    : [];
 
   return (
     <div>
@@ -207,9 +234,13 @@ const ScheduleView: React.FC = () => {
               .sort((a,b) => a.time.localeCompare(b.time))
               .map(b => (
               <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-2">
                   <div>
-                    <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
+                      {courtesyBadge(b)}
+                      {scheduleStatusBadge(b.status)}
+                    </div>
                     <p className="text-sm text-gray-600">{b.client_phone}</p>
                     {showAllProfessionals && b.professional_name && (
                       <p className="text-xs text-[#5b3310] font-medium mt-1">{b.professional_name}</p>
@@ -256,9 +287,13 @@ const ScheduleView: React.FC = () => {
                   <ul className="space-y-2">
                     {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
                       <li key={b.booking_id} className="bg-gray-200/60 rounded px-2 py-1 space-y-0.5">
-                        <div className="flex justify-between gap-1">
+                        <div className="flex justify-between gap-1 items-center">
                           <span className="text-gray-700">{b.time.slice(0,5)}</span>
-                          <span className="text-gray-700 truncate">{b.client_name}</span>
+                          <span className="text-gray-700 truncate flex items-center gap-1 min-w-0">
+                            {courtesyBadge(b)}
+                            {b.client_name}
+                            {scheduleStatusBadge(b.status)}
+                          </span>
                         </div>
                         {showAllProfessionals && b.professional_name && (
                           <div className="text-[10px] text-[#5b3310] font-medium truncate">{b.professional_name}</div>
@@ -275,79 +310,90 @@ const ScheduleView: React.FC = () => {
 
       {/* Mês */}
       {!loading && view === 'month' && (
-        <div className="grid grid-cols-7 gap-2">
-          {(() => {
-            const first = startOfMonth(currentDate);
-            const start = startOfWeek(first);
-            const cells: Date[] = [];
-            for (let i = 0; i < 42; i++) {
-              const d = new Date(start);
-              d.setDate(start.getDate() + i);
-              cells.push(d);
-            }
-            return cells.map((day, idx) => {
-              const key = formatDate(day);
-              const inMonth = day.getMonth() === currentDate.getMonth();
-              const rows = grouped.find(([d]) => d === key)?.[1] || [];
-              return (
-                <div
-                  key={idx}
-                  className={`p-2 rounded border cursor-pointer ${inMonth ? 'border-gray-300 bg-white hover:border-[#5b3310]' : 'border-gray-200 bg-gray-50/40'}`}
-                  style={{ aspectRatio: '1 / 1' }}
-                  onClick={() => { setMonthSelectedDate(day); }}
-                  title="Listar agendamentos do dia abaixo"
-                >
-                  <div className={`text-sm mb-2 ${inMonth ? 'text-gray-700' : 'text-gray-500'}`}>
-                    {day.getDate().toString().padStart(2,'0')}
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+          <div className="grid grid-cols-7 gap-2">
+            {(() => {
+              const first = startOfMonth(currentDate);
+              const start = startOfWeek(first);
+              const cells: Date[] = [];
+              for (let i = 0; i < 42; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                cells.push(d);
+              }
+              return cells.map((day, idx) => {
+                const key = formatDate(day);
+                const inMonth = day.getMonth() === currentDate.getMonth();
+                const rows = grouped.find(([d]) => d === key)?.[1] || [];
+                const isSelected = monthSelectedDate && formatDate(monthSelectedDate) === key;
+                return (
+                  <div
+                    key={idx}
+                    className={`p-2 rounded border cursor-pointer ${inMonth ? 'border-gray-300 bg-white hover:border-[#5b3310]' : 'border-gray-200 bg-gray-50/40'} ${isSelected ? '!border-[#5b3310] ring-1 ring-[#5b3310]/40' : ''}`}
+                    style={{ aspectRatio: '1 / 1' }}
+                    onClick={() => { setMonthSelectedDate(day); }}
+                    title="Listar agendamentos do dia na lateral direita"
+                  >
+                    <div className={`text-sm mb-2 ${inMonth ? 'text-gray-700' : 'text-gray-500'}`}>
+                      {day.getDate().toString().padStart(2,'0')}
+                    </div>
+                    <div className="mt-auto">
+                      <span className={`text-xs font-semibold ${rows.length ? 'text-[#3b200d]' : 'text-gray-500'}`}>
+                        {rows.length ? rows.length : '—'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-auto">
-                    <span className={`text-xs font-semibold ${rows.length ? 'text-[#3b200d]' : 'text-gray-500'}`}>
-                      {rows.length ? rows.length : '—'}
-                    </span>
-                  </div>
-                </div>
-              );
-            });
-          })()}
-        </div>
-      )}
-
-      {!loading && view === 'month' && monthSelectedDate && (
-        <div className="mt-6 mb-6">
-          <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
-            {monthSelectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-          </h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(grouped.find(([d]) => d === formatDate(monthSelectedDate))?.[1] || [])
-              .sort((a,b) => a.time.localeCompare(b.time))
-              .map(b => (
-              <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-lg font-bold text-gray-900">{b.client_name}</h4>
-                    <p className="text-sm text-gray-600">{b.client_phone}</p>
-                    {showAllProfessionals && b.professional_name && (
-                      <p className="text-xs text-[#5b3310] font-medium mt-1">{b.professional_name}</p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-[#3b200d] text-lg">R${Number(b.total_price).toFixed(2)}</p>
-                    <p className="text-sm text-gray-700">{b.time.slice(0,5)}</p>
-                  </div>
-                </div>
-                <div className="border-t border-gray-600 my-3"></div>
-                <div>
-                  <h5 className="font-semibold mb-2 text-gray-700">Serviços:</h5>
-                  <ul className="list-disc list-inside text-gray-700 space-y-1">
-                    {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
-                  </ul>
-                </div>
-              </div>
-            ))}
-            {(grouped.find(([d]) => d === formatDate(monthSelectedDate))?.[1] || []).length === 0 && (
-              <div className="text-gray-600">Sem agendamentos para o dia selecionado.</div>
-            )}
+                );
+              });
+            })()}
           </div>
+
+          <aside className="bg-white rounded-lg border border-gray-300 p-4 xl:sticky xl:top-4">
+            {!monthSelectedDate ? (
+              <div className="text-gray-600">Selecione um dia no calendário para ver os agendamentos.</div>
+            ) : (
+              <>
+                <h3 className="text-[#5b3310] font-bold text-lg mb-3 pb-2 border-b-2 border-gray-300">
+                  {monthSelectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+                </h3>
+
+                {monthSelectedRows.length === 0 ? (
+                  <div className="text-gray-600">Sem agendamentos para o dia selecionado.</div>
+                ) : (
+                  <div className="space-y-3 max-h-[70vh] overflow-auto pr-1">
+                    {monthSelectedRows.map(b => (
+                      <div key={b.booking_id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-base font-bold text-gray-900">{b.client_name}</h4>
+                              {courtesyBadge(b)}
+                              {scheduleStatusBadge(b.status)}
+                            </div>
+                            <p className="text-sm text-gray-600">{b.client_phone}</p>
+                            {showAllProfessionals && b.professional_name && (
+                              <p className="text-xs text-[#5b3310] font-medium mt-1">{b.professional_name}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-[#3b200d]">R${Number(b.total_price).toFixed(2)}</p>
+                            <p className="text-sm text-gray-700">{b.time.slice(0,5)}</p>
+                          </div>
+                        </div>
+                        <div className="border-t border-gray-200 my-3"></div>
+                        <div>
+                          <h5 className="font-semibold mb-2 text-gray-700">Serviços:</h5>
+                          <ul className="list-disc list-inside text-gray-700 space-y-1">
+                            {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
+                          </ul>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
         </div>
       )}
     </div>

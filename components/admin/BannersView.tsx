@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBackdropPointerClose } from '../../hooks/useBackdropPointerClose';
 import { PencilIcon, TrashIcon, PlusCircleIcon } from '../icons';
+import { supabase } from '../../src/lib/supabaseClient';
 
 type BannerType = 'slide' | 'video';
 type HeroMode = 'slider' | 'video';
@@ -18,6 +19,7 @@ type Banner = {
 };
 
 const BannersView: React.FC = () => {
+  const bannersBucket = import.meta.env.VITE_SUPABASE_BANNERS_BUCKET || 'banners';
   const [banners, setBanners] = useState<Banner[]>([]);
   const [heroMode, setHeroMode] = useState<HeroMode>('slider');
   const [savingHeroMode, setSavingHeroMode] = useState(false);
@@ -35,6 +37,9 @@ const BannersView: React.FC = () => {
     display_order: 0,
     is_active: true,
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -59,6 +64,8 @@ const BannersView: React.FC = () => {
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setEditingBanner(null);
+    setSelectedImage(null);
+    setUploadError(null);
   }, []);
 
   const backdropClose = useBackdropPointerClose(handleCloseModal);
@@ -98,7 +105,59 @@ const BannersView: React.FC = () => {
         is_active: true,
       });
     }
+    setSelectedImage(null);
+    setUploadError(null);
     setIsModalOpen(true);
+  };
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setUploadError(null);
+    if (!file) {
+      setSelectedImage(null);
+      return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError('Formato inválido. Envie JPG, JPEG, PNG ou WEBP.');
+      setSelectedImage(null);
+      return;
+    }
+
+    const maxSizeBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      setUploadError('A imagem deve ter no máximo 5MB.');
+      setSelectedImage(null);
+      return;
+    }
+
+    setSelectedImage(file);
+  };
+
+  const uploadSelectedImage = async (file: File): Promise<string> => {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const safeBaseName = file.name
+      .replace(/\.[^/.]+$/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 60);
+    const filePath = `banners/${Date.now()}-${safeBaseName || 'banner'}-${crypto.randomUUID()}.${extension}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from(bannersBucket)
+      .upload(filePath, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+
+    if (uploadErr) {
+      throw new Error(uploadErr.message || 'Falha ao subir imagem.');
+    }
+
+    const { data } = supabase.storage.from(bannersBucket).getPublicUrl(filePath);
+    if (!data?.publicUrl) {
+      throw new Error('Não foi possível obter a URL pública da imagem.');
+    }
+    return data.publicUrl;
   };
 
   const handleSaveBanner = async (e: React.FormEvent) => {
@@ -106,9 +165,14 @@ const BannersView: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      let imageUrl = formData.image_url.trim();
+      if (selectedImage) {
+        setIsUploadingImage(true);
+        imageUrl = await uploadSelectedImage(selectedImage);
+      }
       const payload = {
         banner_type: formData.banner_type,
-        image_url: formData.image_url.trim(),
+        image_url: imageUrl,
         video_url: formData.banner_type === 'video' ? formData.video_url.trim() : '',
         title: formData.title,
         description: formData.description,
@@ -140,7 +204,9 @@ const BannersView: React.FC = () => {
       handleCloseModal();
     } catch (e: any) {
       setError(e.message || 'Erro ao salvar banner');
+      setUploadError(e.message || 'Erro ao enviar imagem');
     } finally {
+      setIsUploadingImage(false);
       setLoading(false);
     }
   };
@@ -472,9 +538,24 @@ const BannersView: React.FC = () => {
                     id="image_url"
                     value={formData.image_url}
                     onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                    placeholder="https://exemplo.com/banner.jpg"
                     className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
-                    required
                   />
+                  <label htmlFor="image_file_slide" className="block text-sm font-medium text-gray-700 mt-3 mb-1">
+                    Ou subir arquivo (JPG, JPEG, PNG, WEBP)
+                  </label>
+                  <input
+                    type="file"
+                    id="image_file_slide"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    onChange={handleImageFileChange}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 file:mr-4 file:rounded-md file:border-0 file:bg-[#3b200d] file:px-3 file:py-1.5 file:text-white hover:file:bg-[#5b3310]"
+                  />
+                  {selectedImage && (
+                    <p className="mt-2 text-xs text-gray-600">
+                      Arquivo selecionado: {selectedImage.name} ({(selectedImage.size / 1024 / 1024).toFixed(2)} MB). O upload será feito ao salvar.
+                    </p>
+                  )}
                   {formData.image_url && (
                     <div className="mt-2">
                       <img
@@ -522,9 +603,24 @@ const BannersView: React.FC = () => {
                       id="image_url_video"
                       value={formData.image_url}
                       onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                      placeholder="https://exemplo.com/thumb.jpg"
                       className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
-                      required
                     />
+                    <label htmlFor="image_file_video" className="block text-sm font-medium text-gray-700 mt-3 mb-1">
+                      Ou subir miniatura (JPG, JPEG, PNG, WEBP)
+                    </label>
+                    <input
+                      type="file"
+                      id="image_file_video"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      onChange={handleImageFileChange}
+                      className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 file:mr-4 file:rounded-md file:border-0 file:bg-[#3b200d] file:px-3 file:py-1.5 file:text-white hover:file:bg-[#5b3310]"
+                    />
+                    {selectedImage && (
+                      <p className="mt-2 text-xs text-gray-600">
+                        Arquivo selecionado: {selectedImage.name} ({(selectedImage.size / 1024 / 1024).toFixed(2)} MB). O upload será feito ao salvar.
+                      </p>
+                    )}
                     {formData.image_url && (
                       <div className="mt-2">
                         <img
@@ -540,6 +636,7 @@ const BannersView: React.FC = () => {
                   </div>
                 </>
               )}
+              {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
 
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -619,10 +716,10 @@ const BannersView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || isUploadingImage || (!formData.image_url.trim() && !selectedImage)}
                   className="bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-2 px-5 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {loading ? 'Salvando...' : 'Salvar'}
+                  {isUploadingImage ? 'Enviando imagem...' : loading ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </form>

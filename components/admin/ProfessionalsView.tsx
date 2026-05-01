@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PlusCircleIcon, TrashIcon, PencilIcon } from '../icons';
+import ExtraWorkersSection from './ExtraWorkersSection';
 
 type Professional = {
   id: string;
@@ -283,6 +284,8 @@ const ProfessionalsView: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <ExtraWorkersSection />
     </div>
   );
 }

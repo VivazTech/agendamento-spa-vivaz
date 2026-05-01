@@ -1,10 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { Service } from '../types';
 
 interface DateTimePickerProps {
   onBack: () => void;
   onDateTimeSelect: (date: Date, time: string) => void;
   serviceDuration: number;
+  courtesyMode?: boolean;
+  selectedServices?: Service[];
 }
 
 type BusinessHour = {
@@ -14,6 +17,12 @@ type BusinessHour = {
   is_active: boolean;
   start_time: string;
   end_time: string;
+};
+
+type ProfessionalBreak = {
+  id: string;
+  break_start_time?: string | null;
+  break_end_time?: string | null;
 };
 
 const Calendar: React.FC<{ selectedDate: Date; onDateSelect: (date: Date) => void }> = ({ selectedDate, onDateSelect }) => {
@@ -107,11 +116,21 @@ const generateTimeSlotsForPeriod = (
     return slots;
 };
 
-const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelect, serviceDuration }) => {
+const DateTimePicker: React.FC<DateTimePickerProps> = ({
+  onBack,
+  onDateTimeSelect,
+  serviceDuration,
+  courtesyMode = false,
+  selectedServices = [],
+}) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dailyCourtesyLimit, setDailyCourtesyLimit] = useState<number>(0);
+  const [courtesyCountForDay, setCourtesyCountForDay] = useState<number>(0);
+  const [courtesyLoading, setCourtesyLoading] = useState(false);
+  const [professionalsBreaks, setProfessionalsBreaks] = useState<ProfessionalBreak[]>([]);
 
   // Buscar horários de funcionamento
   useEffect(() => {
@@ -130,6 +149,63 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
     };
     fetchBusinessHours();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/professionals');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Erro ao buscar profissionais');
+        setProfessionalsBreaks((data.professionals || []) as ProfessionalBreak[]);
+      } catch (error) {
+        console.error('Erro ao buscar intervalos dos profissionais:', error);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!courtesyMode) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Erro ao carregar limite de cortesia');
+        setDailyCourtesyLimit(Number(data?.daily_courtesy_limit || 0));
+      } catch (error) {
+        console.error('Erro ao buscar limite diário de cortesia:', error);
+        setDailyCourtesyLimit(0);
+      }
+    })();
+  }, [courtesyMode]);
+
+  useEffect(() => {
+    if (!courtesyMode) return;
+    const dateStr = selectedDate.toISOString().slice(0, 10);
+    setCourtesyLoading(true);
+    (async () => {
+      try {
+        const qs = new URLSearchParams({
+          from: dateStr,
+          to: dateStr,
+          courtesy_only: '1',
+        });
+        const res = await fetch(`/api/bookings?${qs.toString()}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Erro ao carregar cortesias do dia');
+        const count = Array.isArray(data?.bookings)
+          ? data.bookings.filter(
+              (b: any) => !['cancelled', 'rejected'].includes(String(b?.status || '').toLowerCase())
+            ).length
+          : 0;
+        setCourtesyCountForDay(count);
+      } catch (error) {
+        console.error('Erro ao buscar quantidade de cortesias do dia:', error);
+        setCourtesyCountForDay(0);
+      } finally {
+        setCourtesyLoading(false);
+      }
+    })();
+  }, [courtesyMode, selectedDate]);
 
   // Gerar slots baseados nos horários configurados e no dia da semana selecionado
   const availableSlots = useMemo(() => {
@@ -154,6 +230,61 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
     
     return { morning, afternoon, evening };
   }, [selectedDate, serviceDuration, businessHours]);
+
+  const breakBlockedSlots = useMemo(() => {
+    const blocked = new Set<string>();
+    const servicesWithSingleProfessional = selectedServices.filter((service) => {
+      if (service.serviceProfessionals && service.serviceProfessionals.length > 0) {
+        return service.serviceProfessionals.length === 1;
+      }
+      return Boolean(service.responsibleProfessionalId);
+    });
+
+    if (servicesWithSingleProfessional.length === 0) return blocked;
+
+    const professionalIds = new Set<string>();
+    servicesWithSingleProfessional.forEach((service) => {
+      if (service.serviceProfessionals && service.serviceProfessionals.length === 1) {
+        professionalIds.add(String(service.serviceProfessionals[0].id));
+      } else if (service.responsibleProfessionalId) {
+        professionalIds.add(String(service.responsibleProfessionalId));
+      }
+    });
+
+    const professionalsOnBreak = professionalsBreaks.filter((p) => {
+      if (!professionalIds.has(String(p.id))) return false;
+      return Boolean(p.break_start_time && p.break_end_time);
+    });
+
+    if (professionalsOnBreak.length === 0) return blocked;
+
+    const toMinutes = (value: string) => {
+      const [h, m] = value.slice(0, 5).split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const allSlots = [...availableSlots.morning, ...availableSlots.afternoon, ...availableSlots.evening];
+    for (const slot of allSlots) {
+      const slotMinutes = toMinutes(slot);
+      const isBlocked = professionalsOnBreak.some((professional) => {
+        const start = toMinutes(String(professional.break_start_time).slice(0, 5));
+        const end = toMinutes(String(professional.break_end_time).slice(0, 5));
+        return slotMinutes >= start && slotMinutes < end;
+      });
+      if (isBlocked) blocked.add(slot);
+    }
+
+    return blocked;
+  }, [availableSlots, professionalsBreaks, selectedServices]);
+
+  const visibleSlots = useMemo(
+    () => ({
+      morning: availableSlots.morning.filter((slot) => !breakBlockedSlots.has(slot)),
+      afternoon: availableSlots.afternoon.filter((slot) => !breakBlockedSlots.has(slot)),
+      evening: availableSlots.evening.filter((slot) => !breakBlockedSlots.has(slot)),
+    }),
+    [availableSlots, breakBlockedSlots]
+  );
   
   const handleNext = () => {
     if (selectedDate && selectedTime) {
@@ -168,6 +299,17 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
     return dayHours.length === 0;
   }, [selectedDate, businessHours]);
 
+  const courtesyLimitReached =
+    courtesyMode &&
+    dailyCourtesyLimit > 0 &&
+    courtesyCountForDay >= dailyCourtesyLimit;
+  const allSlotsBlockedByBreak =
+    !isDayClosed &&
+    !courtesyLimitReached &&
+    visibleSlots.morning.length === 0 &&
+    visibleSlots.afternoon.length === 0 &&
+    visibleSlots.evening.length === 0;
+
   return (
     <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-2xl border border-gray-300 shadow-xl">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Escolha a Data e Hora</h2>
@@ -176,9 +318,28 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
           <Calendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
         </div>
         <div className="max-h-[400px] overflow-y-auto pr-2">
-          {loading ? (
+          {loading || courtesyLoading ? (
             <div className="text-center py-8 text-gray-600">
               Carregando horários...
+            </div>
+          ) : courtesyLimitReached ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+              <p className="text-yellow-800 font-semibold text-sm">
+                ⚠️ Limite diário de cortesias atingido para este dia
+              </p>
+              <p className="text-yellow-700 text-xs mt-1">
+                Já existem {courtesyCountForDay} de {dailyCourtesyLimit} cortesias. Selecione outro dia.
+              </p>
+            </div>
+          ) : allSlotsBlockedByBreak ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+              <p className="text-yellow-800 font-semibold text-sm">
+                ⚠️ Horários indisponíveis por intervalo dos profissionais
+              </p>
+              <p className="text-yellow-700 text-xs mt-1">
+                Para os serviços selecionados, os profissionais exclusivos estão em intervalo neste dia/horário.
+                Selecione outro dia.
+              </p>
             </div>
           ) : isDayClosed ? (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
@@ -192,7 +353,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
           ) : (
             <>
               <h3 className="font-bold text-lg mb-4 text-gray-900">Horários disponíveis para {selectedDate.toLocaleDateString('pt-BR')}</h3>
-              {Object.entries(availableSlots).map(([period, slots]) => (
+              {Object.entries(visibleSlots).map(([period, slots]) => (
                   <div key={period} className="mb-4">
                       <h4 className="font-semibold text-[#5b3310] mb-2 capitalize">{period === 'morning' ? 'Manhã' : period === 'afternoon' ? 'Tarde' : 'Noite'}</h4>
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -219,7 +380,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({ onBack, onDateTimeSelec
         <button onClick={onBack} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors">Voltar</button>
         <button 
             onClick={handleNext}
-            disabled={!selectedTime || isDayClosed}
+            disabled={!selectedTime || isDayClosed || courtesyLimitReached || allSlotsBlockedByBreak}
             className="bg-[#3b200d] hover:bg-[#5b3310] text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 shadow-md"
         >
             Próximo

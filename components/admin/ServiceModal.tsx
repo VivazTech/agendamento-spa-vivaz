@@ -32,6 +32,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     category: null,
     image_url: null,
     variation_mode: 'fixed',
+    simultaneous_professionals_required: 1,
   });
 
   const [categories, setCategories] = useState<Array<{ id: number; name: string; icon: string | null }>>([]);
@@ -74,6 +75,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
         category: service.category ?? null,
         image_url: service.image_url ?? null,
         variation_mode: service.variation_mode ?? 'fixed',
+        simultaneous_professionals_required: service.simultaneous_professionals_required === 2 ? 2 : 1,
       });
       const proIds =
         service.serviceProfessionals?.map((p) => p.id).filter(Boolean) ??
@@ -114,6 +116,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
         category: null,
         image_url: null,
         variation_mode: 'fixed',
+        simultaneous_professionals_required: 1,
       });
       setProfessionalIds([]);
       setVariationMode('fixed');
@@ -286,6 +289,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
       professionalIds,
       responsibleProfessionalId: professionalIds[0] ?? null,
       responsibleProfessionalName: proNames.length ? proNames.join(', ') : null,
+      simultaneous_professionals_required: formData.simultaneous_professionals_required === 2 ? 2 : 1,
     } as Service;
 
     onSave(serviceToSave);
@@ -450,6 +454,27 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
                 ))
               )}
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Quantidade de profissionais simultâneos
+            </label>
+            <select
+              value={formData.simultaneous_professionals_required ?? 1}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  simultaneous_professionals_required: Number(e.target.value) === 2 ? 2 : 1,
+                }))
+              }
+              className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 focus:ring-[#5b3310] focus:border-[#5b3310]"
+            >
+              <option value={1}>1 profissional</option>
+              <option value={2}>2 profissionais simultâneos</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Use 2 quando o serviço precisa de dois profissionais trabalhando juntos no mesmo horário.
+            </p>
           </div>
 
           <div className="border-t border-gray-300 pt-4">

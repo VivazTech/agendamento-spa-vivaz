@@ -92,6 +92,7 @@ const ServicesView: React.FC = () => {
             category: service.category ?? null,
             image_url: service.image_url ?? null,
             variation_mode: service.variation_mode ?? 'fixed',
+            simultaneous_professionals_required: service.simultaneous_professionals_required ?? 1,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -111,6 +112,7 @@ const ServicesView: React.FC = () => {
             category: service.category ?? null,
             image_url: service.image_url ?? null,
             variation_mode: service.variation_mode ?? 'fixed',
+            simultaneous_professionals_required: service.simultaneous_professionals_required ?? 1,
           }),
         });
         const data = await res.json().catch(() => ({}));

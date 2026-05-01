@@ -19,6 +19,8 @@ type BookingRow = {
   date: string;  // yyyy-mm-dd
   time: string;  // HH:MM:SS
   total_price: string;
+  status?: string;
+  is_courtesy?: boolean;
   services: Array<{ id: number; name: string; price: number; duration_minutes: number; quantity: number; }>;
 };
 
@@ -86,6 +88,16 @@ const ReportsView: React.FC = () => {
     let count = bookings.length;
     let revenue = bookings.reduce((sum, b) => sum + Number(b.total_price || 0), 0);
     return { count, revenue };
+  }, [bookings]);
+
+  const cortesiaPorStatus = useMemo(() => {
+    const apenas = bookings.filter((b) => b.is_courtesy);
+    const st = (b: BookingRow) => String(b.status || 'pending').toLowerCase();
+    const solicitados = apenas.filter((b) => st(b) === 'pending').length;
+    const confirmados = apenas.filter((b) => st(b) === 'scheduled').length;
+    const realizados = apenas.filter((b) => st(b) === 'completed').length;
+    const cancelados = apenas.filter((b) => st(b) === 'cancelled' || st(b) === 'rejected').length;
+    return { total: apenas.length, solicitados, confirmados, realizados, cancelados };
   }, [bookings]);
 
   // Aggregations
@@ -198,6 +210,35 @@ const ReportsView: React.FC = () => {
               </div>
             </div>
           </div>
+          <div className="bg-white border border-amber-200 rounded-lg p-4 shadow-sm">
+            <h3 className="text-gray-900 font-semibold mb-3 flex flex-wrap items-center gap-2">
+              Cortesia no período
+              <span className="text-xs font-normal text-gray-600">(rota /cortesia)</span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+              <div className="rounded border border-gray-200 p-3">
+                <div className="text-gray-600 text-xs">Total cortesia</div>
+                <div className="text-xl font-bold text-gray-900">{cortesiaPorStatus.total}</div>
+              </div>
+              <div className="rounded border border-amber-100 bg-amber-50/50 p-3">
+                <div className="text-gray-600 text-xs">Solicitados</div>
+                <div className="text-xl font-bold text-amber-950">{cortesiaPorStatus.solicitados}</div>
+              </div>
+              <div className="rounded border border-gray-200 p-3">
+                <div className="text-gray-600 text-xs">Confirmados</div>
+                <div className="text-xl font-bold text-gray-900">{cortesiaPorStatus.confirmados}</div>
+              </div>
+              <div className="rounded border border-gray-200 p-3">
+                <div className="text-gray-600 text-xs">Realizados</div>
+                <div className="text-xl font-bold text-[#3b200d]">{cortesiaPorStatus.realizados}</div>
+              </div>
+              <div className="rounded border border-gray-200 p-3 sm:col-span-1 col-span-2">
+                <div className="text-gray-600 text-xs">Cancelados / recusados</div>
+                <div className="text-xl font-bold text-red-800">{cortesiaPorStatus.cancelados}</div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white border border-gray-300 rounded-lg p-4 text-center">
               <div className="text-gray-600 text-sm">Agendamentos</div>

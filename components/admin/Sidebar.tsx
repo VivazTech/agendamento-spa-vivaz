@@ -104,6 +104,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView }) => {
           isActive={activeView === 'banners'}
           onClick={() => setActiveView('banners')}
         />
+        <NavItem
+          label="Configurações"
+          icon={
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317a1 1 0 011.35-.936l1.63.816a1 1 0 00.894 0l1.63-.816a1 1 0 011.35.936l.156 1.804a1 1 0 00.548.805l1.56.78a1 1 0 01.445 1.34l-.8 1.6a1 1 0 000 .894l.8 1.6a1 1 0 01-.445 1.34l-1.56.78a1 1 0 00-.548.805l-.156 1.804a1 1 0 01-1.35.936l-1.63-.816a1 1 0 00-.894 0l-1.63.816a1 1 0 01-1.35-.936l-.156-1.804a1 1 0 00-.548-.805l-1.56-.78a1 1 0 01-.445-1.34l.8-1.6a1 1 0 000-.894l-.8-1.6a1 1 0 01.445-1.34l1.56-.78a1 1 0 00.548-.805l.156-1.804z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          }
+          isActive={activeView === 'settings'}
+          onClick={() => setActiveView('settings')}
+        />
       </nav>
       
       {/* Informações do usuário e botão de logout */}

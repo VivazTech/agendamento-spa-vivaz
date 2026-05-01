@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'GET') {
 			const { data, error } = await supabase
 				.from('professionals')
-				.select('id, name, email, phone, is_active, created_at, updated_at')
+				.select('id, name, email, phone, is_active, break_start_time, break_end_time, created_at, updated_at')
 				.order('name', { ascending: true });
 			if (error) return res.status(500).json({ ok: false, error: error.message });
 			return res.status(200).json({ ok: true, professionals: data || [] });
@@ -26,22 +26,34 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'POST') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { name, email, phone, is_active } = (body || {}) as {
+			const { name, email, phone, is_active, break_start_time, break_end_time } = (body || {}) as {
 				name?: string;
 				email?: string;
 				phone?: string;
 				is_active?: boolean;
+				break_start_time?: string | null;
+				break_end_time?: string | null;
 			};
 			if (!name || !email || !phone) {
 				return res.status(400).json({ ok: false, error: 'name, email e phone são obrigatórios' });
+			}
+			const hasBreakStart = Boolean(String(break_start_time || '').trim());
+			const hasBreakEnd = Boolean(String(break_end_time || '').trim());
+			if (hasBreakStart !== hasBreakEnd) {
+				return res.status(400).json({ ok: false, error: 'Preencha início e fim do intervalo.' });
+			}
+			if (hasBreakStart && hasBreakEnd && String(break_start_time) >= String(break_end_time)) {
+				return res.status(400).json({ ok: false, error: 'Intervalo inválido: início deve ser menor que fim.' });
 			}
 			const { data, error } = await supabase
 				.from('professionals')
 				.insert({
 					name, email, phone,
 					is_active: typeof is_active === 'boolean' ? is_active : true,
+					break_start_time: hasBreakStart ? break_start_time : null,
+					break_end_time: hasBreakEnd ? break_end_time : null,
 				})
-				.select('id, name, email, phone, is_active, created_at, updated_at')
+				.select('id, name, email, phone, is_active, break_start_time, break_end_time, created_at, updated_at')
 				.single();
 			if (error) return res.status(500).json({ ok: false, error: error.message });
 			return res.status(201).json({ ok: true, professional: data });
@@ -50,21 +62,33 @@ export default async function handler(req: any, res: any) {
 		if (req.method === 'PUT') {
 			const raw = req.body ?? {};
 			const body = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return {}; } })() : raw;
-			const { id, name, email, phone, is_active } = (body || {}) as {
+			const { id, name, email, phone, is_active, break_start_time, break_end_time } = (body || {}) as {
 				id?: string;
 				name?: string;
 				email?: string;
 				phone?: string;
 				is_active?: boolean;
+				break_start_time?: string | null;
+				break_end_time?: string | null;
 			};
 			if (!id || !name || !email || !phone) {
 				return res.status(400).json({ ok: false, error: 'id, name, email e phone são obrigatórios' });
+			}
+			const hasBreakStart = Boolean(String(break_start_time || '').trim());
+			const hasBreakEnd = Boolean(String(break_end_time || '').trim());
+			if (hasBreakStart !== hasBreakEnd) {
+				return res.status(400).json({ ok: false, error: 'Preencha início e fim do intervalo.' });
+			}
+			if (hasBreakStart && hasBreakEnd && String(break_start_time) >= String(break_end_time)) {
+				return res.status(400).json({ ok: false, error: 'Intervalo inválido: início deve ser menor que fim.' });
 			}
 			const { error } = await supabase
 				.from('professionals')
 				.update({
 					name, email, phone,
 					is_active: typeof is_active === 'boolean' ? is_active : true,
+					break_start_time: hasBreakStart ? break_start_time : null,
+					break_end_time: hasBreakEnd ? break_end_time : null,
 					updated_at: new Date().toISOString(),
 				})
 				.eq('id', id);

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Client } from '../types';
 
 interface UserDetailsFormProps {
@@ -37,12 +37,30 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
     email: '', // Mantido para compatibilidade, mas não será usado
     notes: '',
     room_number: '',
+    client_type: undefined,
+    already_hosted: undefined,
+    reservation_number: '',
+    is_group: false,
+    payment_method_id: null,
   });
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: number; name: string }>>([]);
   
   const [errors, setErrors] = useState<Partial<Client>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/payment-methods?active_only=1');
+        const data = await res.json();
+        if (res.ok) {
+          setPaymentMethods((data.payment_methods || []) as Array<{ id: number; name: string }>);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
     // Aplicar máscara apenas no campo de telefone
@@ -54,6 +72,10 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
       // Aceitar apenas números e limitar a 4 dígitos
       const numbers = value.replace(/\D/g, '').slice(0, 4);
       setFormData(prev => ({ ...prev, [name]: numbers }));
+    } else if (name === 'reservation_number') {
+      setFormData(prev => ({ ...prev, reservation_number: value }));
+    } else if (name === 'payment_method_id') {
+      setFormData(prev => ({ ...prev, payment_method_id: value ? Number(value) : null }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -93,10 +115,27 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
       newErrors.phone = "Telefone inválido. Use o formato (XX) XXXXX-XXXX";
     }
     
-    if (!formData.room_number || formData.room_number.trim().length === 0) {
-      newErrors.room_number = "Acomodação é obrigatória";
-    } else if (formData.room_number.length < 4) {
-      newErrors.room_number = "Acomodação deve ter 4 números";
+    if (!formData.client_type) {
+      (newErrors as Record<string, string>).client_type = "Selecione hóspede ou passante";
+    }
+
+    if (formData.client_type === 'hospede') {
+      if (formData.already_hosted === undefined) {
+        (newErrors as Record<string, string>).already_hosted = "Informe se já está hospedado";
+      } else if (formData.already_hosted) {
+        if (!formData.room_number || formData.room_number.trim().length === 0) {
+          newErrors.room_number = "Número do quarto é obrigatório para hóspede já hospedado";
+        } else if (formData.room_number.length < 4) {
+          newErrors.room_number = "Número do quarto deve ter 4 números";
+        }
+      } else {
+        if (!formData.reservation_number || !formData.reservation_number.trim()) {
+          (newErrors as Record<string, string>).reservation_number = "Número da reserva é obrigatório";
+        }
+      }
+    }
+    if (paymentMethods.length > 0 && !formData.payment_method_id) {
+      (newErrors as Record<string, string>).payment_method_id = 'Selecione a forma de pagamento';
     }
     
     setErrors(newErrors);
@@ -125,6 +164,8 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
           ...formData,
           phone: phoneWithoutMask,
           email: '', // Email não é mais usado, mas mantido para compatibilidade com API
+          payment_method_name:
+            paymentMethods.find((p) => p.id === formData.payment_method_id)?.name ?? null,
         };
         const result = onSubmit(dataToSubmit);
         // Se for uma Promise, aguardar
@@ -179,35 +220,164 @@ const UserDetailsForm: React.FC<UserDetailsFormProps> = ({ onBack, onSubmit }) =
           {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
         </div>
         <div>
-          <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-1">Acomodações <span className="text-red-600">*</span></label>
-          <input 
-            type="text" 
-            id="room_number" 
-            name="room_number" 
-            value={formData.room_number || ''} 
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de cliente <span className="text-red-600">*</span></label>
+          <div className="flex gap-6">
+            <label className="inline-flex items-center gap-2 text-gray-700">
+              <input
+                type="radio"
+                name="client_type"
+                checked={formData.client_type === 'hospede'}
+                onChange={() =>
+                  setFormData(prev => ({
+                    ...prev,
+                    client_type: 'hospede',
+                  }))
+                }
+              />
+              Hóspede
+            </label>
+            <label className="inline-flex items-center gap-2 text-gray-700">
+              <input
+                type="radio"
+                name="client_type"
+                checked={formData.client_type === 'passante'}
+                onChange={() =>
+                  setFormData(prev => ({
+                    ...prev,
+                    client_type: 'passante',
+                    already_hosted: undefined,
+                    room_number: '',
+                    reservation_number: '',
+                  }))
+                }
+              />
+              Passante
+            </label>
+          </div>
+          {(errors as Record<string, string>).client_type && (
+            <p className="text-red-600 text-sm mt-1">{(errors as Record<string, string>).client_type}</p>
+          )}
+        </div>
+        {formData.client_type === 'hospede' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Já está hospedado? <span className="text-red-600">*</span></label>
+            <div className="flex gap-6">
+              <label className="inline-flex items-center gap-2 text-gray-700">
+                <input
+                  type="radio"
+                  name="already_hosted"
+                  checked={formData.already_hosted === true}
+                  onChange={() =>
+                    setFormData(prev => ({
+                      ...prev,
+                      already_hosted: true,
+                      reservation_number: '',
+                    }))
+                  }
+                />
+                Sim
+              </label>
+              <label className="inline-flex items-center gap-2 text-gray-700">
+                <input
+                  type="radio"
+                  name="already_hosted"
+                  checked={formData.already_hosted === false}
+                  onChange={() =>
+                    setFormData(prev => ({
+                      ...prev,
+                      already_hosted: false,
+                      room_number: '',
+                    }))
+                  }
+                />
+                Não
+              </label>
+            </div>
+            {(errors as Record<string, string>).already_hosted && (
+              <p className="text-red-600 text-sm mt-1">{(errors as Record<string, string>).already_hosted}</p>
+            )}
+          </div>
+        )}
+        {formData.client_type === 'hospede' && formData.already_hosted === true && (
+          <div>
+            <label htmlFor="room_number" className="block text-sm font-medium text-gray-700 mb-1">Número do quarto <span className="text-red-600">*</span></label>
+            <input 
+              type="text" 
+              id="room_number" 
+              name="room_number" 
+              value={formData.room_number || ''} 
+              onChange={handleChange}
+              onKeyDown={(e) => {
+                // Permitir backspace, delete, tab, escape, enter e setas
+                if ([8, 9, 27, 13, 46, 35, 36, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+                  // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                  (e.keyCode === 65 && e.ctrlKey === true) ||
+                  (e.keyCode === 67 && e.ctrlKey === true) ||
+                  (e.keyCode === 86 && e.ctrlKey === true) ||
+                  (e.keyCode === 88 && e.ctrlKey === true)) {
+                  return;
+                }
+                // Garantir que é um número e não uma tecla especial
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                  e.preventDefault();
+                }
+              }}
+              maxLength={4}
+              placeholder="1234"
+              className={`w-full bg-gray-50 border rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310] ${
+                errors.room_number ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
+            {errors.room_number && <p className="text-red-600 text-sm mt-1">{errors.room_number}</p>}
+          </div>
+        )}
+        {formData.client_type === 'hospede' && formData.already_hosted === false && (
+          <div>
+            <label htmlFor="reservation_number" className="block text-sm font-medium text-gray-700 mb-1">Número da reserva <span className="text-red-600">*</span></label>
+            <input
+              type="text"
+              id="reservation_number"
+              name="reservation_number"
+              value={formData.reservation_number || ''}
+              onChange={handleChange}
+              placeholder="Informe o número da reserva"
+              className={`w-full bg-gray-50 border rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310] ${
+                (errors as Record<string, string>).reservation_number ? 'border-red-500' : 'border-gray-300'
+              }`}
+            />
+            {(errors as Record<string, string>).reservation_number && (
+              <p className="text-red-600 text-sm mt-1">{(errors as Record<string, string>).reservation_number}</p>
+            )}
+          </div>
+        )}
+        <div>
+          <label htmlFor="payment_method_id" className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+          <select
+            id="payment_method_id"
+            name="payment_method_id"
+            value={formData.payment_method_id ?? ''}
             onChange={handleChange}
-            onKeyDown={(e) => {
-              // Permitir backspace, delete, tab, escape, enter e setas
-              if ([8, 9, 27, 13, 46, 35, 36, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
-                // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                (e.keyCode === 65 && e.ctrlKey === true) ||
-                (e.keyCode === 67 && e.ctrlKey === true) ||
-                (e.keyCode === 86 && e.ctrlKey === true) ||
-                (e.keyCode === 88 && e.ctrlKey === true)) {
-                return;
-              }
-              // Garantir que é um número e não uma tecla especial
-              if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-                e.preventDefault();
-              }
-            }}
-            maxLength={4}
-            placeholder="1234"
-            className={`w-full bg-gray-50 border rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310] ${
-              errors.room_number ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.room_number && <p className="text-red-600 text-sm mt-1">{errors.room_number}</p>}
+            className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-[#5b3310] focus:border-[#5b3310]"
+          >
+            <option value="">Selecione...</option>
+            {paymentMethods.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+          {(errors as Record<string, string>).payment_method_id && (
+            <p className="text-red-600 text-sm mt-1">{(errors as Record<string, string>).payment_method_id}</p>
+          )}
+        </div>
+        <div>
+          <label className="inline-flex items-center gap-2 text-gray-700">
+            <input
+              type="checkbox"
+              name="is_group"
+              checked={Boolean(formData.is_group)}
+              onChange={(e) => setFormData(prev => ({ ...prev, is_group: e.target.checked }))}
+            />
+            Grupo
+          </label>
         </div>
         <div>
           <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>

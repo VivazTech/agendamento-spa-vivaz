@@ -75,7 +75,14 @@ const ServiceItem: React.FC<{
             <p className="text-gray-600 text-sm mt-1 line-clamp-2">{service.description}</p>
             {service.responsibleProfessionalName && (
               <p className="text-gray-700 text-sm mt-1">
-                {(service.serviceProfessionals?.length ?? 0) > 1 ? 'Profissionais' : 'Profissional'}:{' '}
+                <span className="font-medium">
+                  {service.is_substitute_display
+                    ? 'Substituto hoje'
+                    : (service.serviceProfessionals?.length ?? 0) > 1
+                      ? 'Profissionais'
+                      : 'Profissional'}
+                  :
+                </span>{' '}
                 {service.responsibleProfessionalName}
               </p>
             )}
@@ -158,7 +165,7 @@ const BookingSummary: React.FC<{
   onNextClick: () => void;
 }> = ({ selectedServices, totalDuration, totalPrice, onNext, onNextClick }) => (
     <div className="sticky top-24 bg-white p-6 rounded-lg border border-gray-300 shadow-xl">
-        <h2 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3 mb-4">Resumo do Agendamento</h2>
+        <h2 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3 mb-4">Resumo da solicitação</h2>
         {selectedServices.length === 0 ? (
           <p className="text-gray-600">Selecione um serviço para começar.</p>
         ) : (

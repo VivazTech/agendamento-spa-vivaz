@@ -9,6 +9,16 @@ type BusinessHour = {
   end_time: string;
 };
 
+type Professional = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  is_active: boolean;
+  break_start_time?: string | null;
+  break_end_time?: string | null;
+};
+
 const DAYS_OF_WEEK = [
   'Domingo',
   'Segunda-feira',
@@ -30,6 +40,8 @@ const BusinessHoursView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [savingBreakId, setSavingBreakId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -46,9 +58,72 @@ const BusinessHoursView: React.FC = () => {
     }
   };
 
+  const loadProfessionals = async () => {
+    try {
+      const res = await fetch('/api/professionals');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Erro ao carregar profissionais');
+      setProfessionals((data.professionals || []) as Professional[]);
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao carregar profissionais');
+    }
+  };
+
   useEffect(() => {
     load();
+    loadProfessionals();
   }, []);
+
+  const updateProfessionalBreakField = (id: string, field: 'break_start_time' | 'break_end_time', value: string) => {
+    setProfessionals((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              [field]: value,
+            }
+          : p
+      )
+    );
+  };
+
+  const saveProfessionalBreak = async (professional: Professional) => {
+    const hasStart = Boolean(String(professional.break_start_time || '').trim());
+    const hasEnd = Boolean(String(professional.break_end_time || '').trim());
+    if (hasStart !== hasEnd) {
+      setError('Preencha início e fim do intervalo do profissional.');
+      return;
+    }
+    if (hasStart && hasEnd && String(professional.break_start_time) >= String(professional.break_end_time)) {
+      setError('Intervalo inválido: início deve ser menor que fim.');
+      return;
+    }
+
+    setSavingBreakId(professional.id);
+    setError(null);
+    try {
+      const res = await fetch('/api/professionals', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: professional.id,
+          name: professional.name,
+          email: professional.email,
+          phone: professional.phone,
+          is_active: professional.is_active,
+          break_start_time: hasStart ? professional.break_start_time : null,
+          break_end_time: hasEnd ? professional.break_end_time : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Erro ao salvar intervalo do profissional');
+      await loadProfessionals();
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao salvar intervalo do profissional');
+    } finally {
+      setSavingBreakId(null);
+    }
+  };
 
   const updateHour = async (hour: BusinessHour) => {
     setSaving(hour.id);
@@ -95,6 +170,52 @@ const BusinessHoursView: React.FC = () => {
           <strong>Importante:</strong> Configure os horários de funcionamento por dia da semana e período. 
           Os horários desativados não aparecerão para os clientes no momento do agendamento.
         </p>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-300 p-4 mb-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-3">Intervalo por funcionário</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Defina o intervalo diário de cada profissional. Durante esse período, serviços atendidos somente por ele ficam indisponíveis para novos agendamentos.
+        </p>
+        <div className="space-y-3">
+          {professionals.map((professional) => (
+            <div key={professional.id} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_160px_160px_auto] gap-3 items-end border border-gray-200 rounded-lg p-3">
+              <div>
+                <div className="font-semibold text-gray-900">{professional.name}</div>
+                <div className="text-xs text-gray-600">{professional.email}</div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Início do intervalo</label>
+                <input
+                  type="time"
+                  value={professional.break_start_time || ''}
+                  onChange={(e) => updateProfessionalBreakField(professional.id, 'break_start_time', e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded px-3 py-2 text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Fim do intervalo</label>
+                <input
+                  type="time"
+                  value={professional.break_end_time || ''}
+                  onChange={(e) => updateProfessionalBreakField(professional.id, 'break_end_time', e.target.value)}
+                  className="w-full bg-white border border-gray-300 rounded px-3 py-2 text-gray-900"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => saveProfessionalBreak(professional)}
+                disabled={savingBreakId === professional.id}
+                className="bg-[#3b200d] hover:bg-[#5b3310] text-white font-semibold py-2 px-4 rounded disabled:opacity-60"
+              >
+                {savingBreakId === professional.id ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          ))}
+          {!loading && professionals.length === 0 && (
+            <div className="text-gray-600">Nenhum profissional cadastrado.</div>
+          )}
+        </div>
       </div>
 
       {error && (
