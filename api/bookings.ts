@@ -878,7 +878,7 @@ export default async function handler(req: any, res: any) {
 			const shouldSendWhatsApp = body.send_whatsapp === true;
 			if (status === 'completed' && shouldSendWhatsApp) {
 				try {
-					const { sendWhatsAppMessage, formatCompletionMessage, formatProfessionalMessage } = await import('./whatsapp');
+					const { sendWhatsAppMessage, formatCompletionMessage, formatProfessionalMessage } = await import('../server/whatsapp');
 
 					const client = bookingData.clients as any;
 					const professional = bookingData.professionals as any;

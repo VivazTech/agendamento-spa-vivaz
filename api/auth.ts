@@ -417,7 +417,7 @@ export default async function handler(req: any, res: any) {
 			// Import dinâmico para evitar erros de inicialização
 			let emailResult: { success: boolean; error?: string };
 			try {
-				const { sendResetPasswordEmail } = await import('./sendEmail');
+				const { sendResetPasswordEmail } = await import('../server/sendEmail');
 				emailResult = await sendResetPasswordEmail(
 					admin.email!,
 					resetLink,
