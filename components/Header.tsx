@@ -12,6 +12,10 @@ type PendingBooking = {
   time?: string;
   services?: Array<{ name?: string }>;
   status?: string;
+  reschedule_request?: {
+    status?: string;
+    requested_by?: string;
+  } | null;
 };
 
 const Header: React.FC = () => {
@@ -48,7 +52,14 @@ const Header: React.FC = () => {
         const data = await res.json();
         if (!res.ok) return;
         const pending = Array.isArray(data?.bookings)
-          ? data.bookings.filter((b: PendingBooking) => String(b?.status || '').toLowerCase() === 'pending')
+          ? data.bookings.filter((b: PendingBooking) => {
+              const bookingPending = String(b?.status || '').toLowerCase() === 'pending';
+              const rr = b?.reschedule_request;
+              const clientReschedulePending =
+                String(rr?.status || '').toLowerCase() === 'pending' &&
+                (String(rr?.requested_by || '').toLowerCase() === 'client' || !rr?.requested_by);
+              return bookingPending || clientReschedulePending;
+            })
           : [];
         if (!cancelled) {
           setPendingBookings(pending);
@@ -152,6 +163,12 @@ const Header: React.FC = () => {
                           <div className="text-xs text-gray-600">
                             {formatDatePtBr(booking.date)} {booking.time ? `às ${booking.time.slice(0, 5)}` : ''}
                           </div>
+                          {String(booking?.reschedule_request?.status || '').toLowerCase() === 'pending' &&
+                            (String(booking?.reschedule_request?.requested_by || '').toLowerCase() === 'client' || !booking?.reschedule_request?.requested_by) && (
+                            <div className="text-[11px] font-semibold text-amber-700 mt-1">
+                              ⏳ Cliente pediu troca de horário
+                            </div>
+                          )}
                           {!!booking.services?.length && (
                             <div className="text-xs text-gray-700 mt-1 line-clamp-1">
                               {(booking.services || []).map((s) => s?.name).filter(Boolean).join(', ')}
