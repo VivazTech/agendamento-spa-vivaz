@@ -80,7 +80,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                     <span className="text-xs text-gray-500 block">{s.selectedVariation.label}</span>
                   ) : null}
                 </span>
-                <span className="flex-shrink-0">R${s.price.toFixed(2)}</span>
+                {!is_courtesy && <span className="flex-shrink-0">R${s.price.toFixed(2)}</span>}
               </li>
             ))}
           </ul>
@@ -111,13 +111,15 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ booking, onNewBooki
                     )}
                 </div>
             </div>
-             <div className="flex items-center">
-                <DollarSignIcon className="w-5 h-5 mr-3 text-[#5b3310]"/>
-                <div>
-                    <span className="text-sm text-gray-600">Total</span>
-                    <p className="font-semibold text-gray-900">R${totalPrice.toFixed(2)}</p>
-                </div>
-            </div>
+             {!is_courtesy && (
+              <div className="flex items-center">
+                  <DollarSignIcon className="w-5 h-5 mr-3 text-[#5b3310]"/>
+                  <div>
+                      <span className="text-sm text-gray-600">Total</span>
+                      <p className="font-semibold text-gray-900">R${totalPrice.toFixed(2)}</p>
+                  </div>
+              </div>
+             )}
             {client.payment_method_name && (
               <div className="sm:col-span-2 text-sm text-gray-700">
                 <span className="text-gray-600">Pagamento:</span>{' '}

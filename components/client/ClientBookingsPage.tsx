@@ -20,9 +20,47 @@ type Row = {
   date: string;
   time: string;
   status?: 'pending' | 'scheduled' | 'rejected' | 'completed' | 'cancelled' | string;
-  services: Array<{ name: string; price: number }>;
+  services: Array<{ name: string; price: number; duration_minutes?: number; quantity?: number }>;
   total_price: string;
   reschedule_request?: RescheduleRequest | null;
+};
+
+type BusinessHour = {
+  id: string;
+  day_of_week: number;
+  period: 'morning' | 'afternoon' | 'evening';
+  is_active: boolean;
+  start_time: string;
+  end_time: string;
+};
+
+const formatDatePtBr = (dateStr?: string) => {
+  if (!dateStr) return '';
+  const [year, month, day] = String(dateStr).split('-').map(Number);
+  if (!year || !month || !day) return String(dateStr);
+  const localDate = new Date(year, month - 1, day);
+  return localDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
+};
+
+const generateTimeSlotsForPeriod = (
+  startTime: string,
+  endTime: string,
+  serviceDuration: number
+): string[] => {
+  const slots: string[] = [];
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+  const startTimeInMinutes = startHour * 60 + startMin;
+  const endTimeInMinutes = endHour * 60 + endMin;
+  const interval = serviceDuration + 15;
+  let currentTime = startTimeInMinutes;
+  while (currentTime + serviceDuration <= endTimeInMinutes) {
+    const hour = Math.floor(currentTime / 60);
+    const minute = currentTime % 60;
+    slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+    currentTime += interval;
+  }
+  return slots;
 };
 
 const ClientBookingsPage: React.FC = () => {
@@ -36,6 +74,7 @@ const ClientBookingsPage: React.FC = () => {
   const [newDate, setNewDate] = useState<string>('');
   const [newTime, setNewTime] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
 
   const statusMeta = (status?: string) => {
     switch (status) {
@@ -98,6 +137,52 @@ const ClientBookingsPage: React.FC = () => {
     })();
   }, [phone, clientName]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/business-hours');
+        const data = await res.json();
+        if (res.ok && Array.isArray(data?.hours)) {
+          setBusinessHours(data.hours as BusinessHour[]);
+        }
+      } catch {
+        // ignora: fallback sem horários
+      }
+    })();
+  }, []);
+
+  const currentRescheduleRow = rows.find((r) => r.booking_id === rescheduleId);
+  const selectedDateObj = newDate ? (() => {
+    const [y, m, d] = newDate.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  })() : null;
+  const serviceDuration = Math.max(
+    15,
+    (currentRescheduleRow?.services || []).reduce(
+      (sum, s) => sum + Number(s.duration_minutes || 0) * Number(s.quantity || 1),
+      0
+    ) || 30
+  );
+  const availableTimesForReschedule = selectedDateObj
+    ? (() => {
+        const dayOfWeek = selectedDateObj.getDay();
+        const dayHours = businessHours.filter((h) => h.day_of_week === dayOfWeek && h.is_active);
+        const slots = dayHours.flatMap((h) =>
+          generateTimeSlotsForPeriod(h.start_time, h.end_time, serviceDuration)
+        );
+        const unique = Array.from(new Set(slots)).sort((a, b) => a.localeCompare(b));
+        const now = new Date();
+        const isToday =
+          selectedDateObj.getFullYear() === now.getFullYear() &&
+          selectedDateObj.getMonth() === now.getMonth() &&
+          selectedDateObj.getDate() === now.getDate();
+        if (!isToday) return unique;
+        const currentHm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        return unique.filter((t) => t > currentHm);
+      })()
+    : [];
+
   if (!phone) {
     return (
       <div className="max-w-lg mx-auto text-center bg-white p-8 rounded-2xl border border-gray-300 shadow-xl">
@@ -145,7 +230,7 @@ const ClientBookingsPage: React.FC = () => {
             <div key={r.booking_id} className="border border-gray-300 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-gray-900">
-                  {new Date(r.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {r.time?.slice(0,5)}
+                  {formatDatePtBr(r.date)} às {r.time?.slice(0,5)}
                 </div>
                 <div className="text-[#3b200d] font-bold">R${Number(r.total_price || 0).toFixed(2)}</div>
               </div>
@@ -165,7 +250,7 @@ const ClientBookingsPage: React.FC = () => {
                     ⏳ Troca de horário enviada
                   </p>
                   <p className="text-xs text-yellow-700 mt-1">
-                    Novo horário pedido por você: {new Date(rr!.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às{' '}
+                    Novo horário pedido por você: {formatDatePtBr(rr!.requested_date)} às{' '}
                     {rr!.requested_time.slice(0, 5)}
                   </p>
                   <p className="text-xs text-yellow-600 mt-1">Aguardando confirmação do spa.</p>
@@ -178,11 +263,11 @@ const ClientBookingsPage: React.FC = () => {
                   <p className="text-sm text-sky-900 font-medium">O spa sugeriu outro horário</p>
                   <p className="text-xs text-sky-800">
                     Seu pedido foi para{' '}
-                    {new Date(rr.original_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {rr.original_time.slice(0, 5)}.
+                    {formatDatePtBr(rr.original_date)} às {rr.original_time.slice(0, 5)}.
                   </p>
                   <p className="text-xs text-sky-800">
                     <span className="font-semibold">Horário sugerido:</span>{' '}
-                    {new Date(rr.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {rr.requested_time.slice(0, 5)}
+                    {formatDatePtBr(rr.requested_date)} às {rr.requested_time.slice(0, 5)}
                   </p>
                   <div className="flex flex-wrap gap-2 pt-2">
                     <button
@@ -259,7 +344,7 @@ const ClientBookingsPage: React.FC = () => {
                     ✅ Troca de horário aceita
                   </p>
                   <p className="text-xs text-green-700 mt-1">
-                    Horário combinado: {new Date(rr.requested_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às{' '}
+                    Horário combinado: {formatDatePtBr(rr.requested_date)} às{' '}
                     {rr.requested_time.slice(0, 5)}
                   </p>
                 </div>
@@ -347,12 +432,23 @@ const ClientBookingsPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Novo horário</label>
-                <input
-                  type="time"
+                <select
                   value={newTime}
                   onChange={(e) => setNewTime(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
-                />
+                >
+                  <option value="">Selecione um horário</option>
+                  {availableTimesForReschedule.map((time) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
+                </select>
+                {newDate && availableTimesForReschedule.length === 0 && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Não há horários disponíveis para esta data. Selecione outro dia.
+                  </p>
+                )}
               </div>
               <div className="flex items-center justify-end gap-2">
                 <button
@@ -363,6 +459,7 @@ const ClientBookingsPage: React.FC = () => {
                 </button>
                 <button
                   className="px-4 py-2 rounded-lg bg-[#3b200d] text-white font-semibold hover:bg-[#5b3310]"
+                  disabled={!newDate || !newTime}
                   onClick={async () => {
                     try {
                       const res = await fetch('/api/bookings', {

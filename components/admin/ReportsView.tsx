@@ -21,6 +21,7 @@ type BookingRow = {
   total_price: string;
   status?: string;
   is_courtesy?: boolean;
+  rejection_reason?: string | null;
   services: Array<{ id: number; name: string; price: number; duration_minutes: number; quantity: number; }>;
 };
 
@@ -99,6 +100,21 @@ const ReportsView: React.FC = () => {
     const cancelados = apenas.filter((b) => st(b) === 'cancelled' || st(b) === 'rejected').length;
     return { total: apenas.length, solicitados, confirmados, realizados, cancelados };
   }, [bookings]);
+
+  const recusasComMotivo = useMemo(
+    () =>
+      bookings
+        .filter((b) => String(b.status || '').toLowerCase() === 'rejected')
+        .map((b) => ({
+          booking_id: b.booking_id,
+          date: b.date,
+          time: b.time,
+          reason: String(b.rejection_reason || '').trim() || 'Sem motivo informado',
+        }))
+        .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))
+        .slice(0, 8),
+    [bookings]
+  );
 
   // Aggregations
   const byDay = useMemo(() => {
@@ -248,6 +264,24 @@ const ReportsView: React.FC = () => {
               <div className="text-gray-600 text-sm">Receita (R$)</div>
               <div className="text-2xl font-bold text-[#3b200d]">{totals.revenue.toFixed(2)}</div>
             </div>
+          </div>
+
+          <div className="bg-white border border-gray-300 rounded-lg p-4">
+            <h3 className="text-gray-900 font-semibold mb-3">Recusas no período (interno)</h3>
+            {recusasComMotivo.length === 0 ? (
+              <p className="text-sm text-gray-600">Nenhuma recusa com motivo no período selecionado.</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                {recusasComMotivo.map((item) => (
+                  <div key={item.booking_id} className="rounded border border-gray-200 p-2">
+                    <div className="text-xs text-gray-500">
+                      {new Date(item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {item.time.slice(0, 5)}
+                    </div>
+                    <div className="text-sm text-gray-800 mt-1">{item.reason}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

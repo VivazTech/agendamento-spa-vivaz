@@ -18,6 +18,7 @@ interface ServiceSelectorProps {
   onNext: () => void;
   totalDuration: number;
   totalPrice: number;
+  hidePrices?: boolean;
 }
 
 function isServiceTypeVariations(s: Service): boolean {
@@ -29,7 +30,8 @@ const ServiceItem: React.FC<{
   isSelected: boolean; 
   onToggle: () => void;
   onEditVariation?: () => void;
-}> = ({ service, isSelected, onToggle, onEditVariation }) => (
+  hidePrices?: boolean;
+}> = ({ service, isSelected, onToggle, onEditVariation, hidePrices = false }) => (
     <div
       onClick={onToggle}
       className={`bg-white rounded-lg border-2 transition-all duration-200 cursor-pointer hover:border-[#5b3310] shadow-sm overflow-hidden ${
@@ -109,10 +111,12 @@ const ServiceItem: React.FC<{
                           </span>
                         )}
                       </div>
-                      <div className="text-base text-white font-bold whitespace-nowrap">
-                        <span className="text-[10px]">R$</span> {Math.floor(service.selectedVariation.price)}
-                        <span className="text-[10px]">,{String(service.selectedVariation.price.toFixed(2)).split('.')[1]}</span>
-                      </div>
+                      {!hidePrices && (
+                        <div className="text-base text-white font-bold whitespace-nowrap">
+                          <span className="text-[10px]">R$</span> {Math.floor(service.selectedVariation.price)}
+                          <span className="text-[10px]">,{String(service.selectedVariation.price.toFixed(2)).split('.')[1]}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -134,10 +138,12 @@ const ServiceItem: React.FC<{
                           ) : (
                             <div className="text-xs text-gray-600">{variation.duration_minutes} min</div>
                           )}
-                          <div className="text-sm font-bold text-[#5b3310] whitespace-nowrap mt-1">
-                            <span className="text-[10px]">R$</span> {Math.floor(variation.price)}
-                            <span className="text-[10px]">,{String(variation.price.toFixed(2)).split('.')[1]}</span>
-                          </div>
+                          {!hidePrices && (
+                            <div className="text-sm font-bold text-[#5b3310] whitespace-nowrap mt-1">
+                              <span className="text-[10px]">R$</span> {Math.floor(variation.price)}
+                              <span className="text-[10px]">,{String(variation.price.toFixed(2)).split('.')[1]}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -147,7 +153,7 @@ const ServiceItem: React.FC<{
             ) : (
               <div className="flex items-center space-x-4 mt-3 text-gray-700 text-sm">
                 <span className="flex items-center"><ClockIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> {service.duration} min</span>
-                <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> R${service.price.toFixed(2)}</span>
+                {!hidePrices && <span className="flex items-center"><DollarSignIcon className="w-4 h-4 mr-1.5 text-[#5b3310]" /> R${service.price.toFixed(2)}</span>}
               </div>
             )}
           </div>
@@ -163,7 +169,8 @@ const BookingSummary: React.FC<{
   totalPrice: number;
   onNext: () => void;
   onNextClick: () => void;
-}> = ({ selectedServices, totalDuration, totalPrice, onNext, onNextClick }) => (
+  hidePrices?: boolean;
+}> = ({ selectedServices, totalDuration, totalPrice, onNext, onNextClick, hidePrices = false }) => (
     <div className="sticky top-24 bg-white p-6 rounded-lg border border-gray-300 shadow-xl">
         <h2 className="text-xl font-bold text-gray-900 border-b border-gray-300 pb-3 mb-4">Resumo da solicitação</h2>
         {selectedServices.length === 0 ? (
@@ -185,7 +192,7 @@ const BookingSummary: React.FC<{
                       </span>
                     )}
                   </div>
-                  <span>R${displayPrice.toFixed(2)}</span>
+                  {!hidePrices && <span>R${displayPrice.toFixed(2)}</span>}
                 </li>
               );
             })}
@@ -196,10 +203,12 @@ const BookingSummary: React.FC<{
             <span>Tempo total:</span>
             <span>{totalDuration} min</span>
           </div>
-          <div className="flex justify-between font-bold text-lg text-[#3b200d]">
-            <span>Valor total:</span>
-            <span>R${totalPrice.toFixed(2)}</span>
-          </div>
+          {!hidePrices && (
+            <div className="flex justify-between font-bold text-lg text-[#3b200d]">
+              <span>Valor total:</span>
+              <span>R${totalPrice.toFixed(2)}</span>
+            </div>
+          )}
         </div>
         <button
           onClick={onNextClick}
@@ -218,7 +227,8 @@ const FixedFooter: React.FC<{
   onNext: () => void;
   onNextClick: () => void;
   isVisible: boolean;
-}> = ({ selectedServices, totalPrice, onNext, onNextClick, isVisible }) => {
+  hidePrices?: boolean;
+}> = ({ selectedServices, totalPrice, onNext, onNextClick, isVisible, hidePrices = false }) => {
   if (selectedServices.length === 0) return null;
 
   return (
@@ -237,9 +247,11 @@ const FixedFooter: React.FC<{
                   : `${selectedServices.length} serviços selecionados`}
               </span>
             </div>
-            <div className="text-lg font-bold text-[#3b200d]">
-              R$ {totalPrice.toFixed(2)}
-            </div>
+            {!hidePrices && (
+              <div className="text-lg font-bold text-[#3b200d]">
+                R$ {totalPrice.toFixed(2)}
+              </div>
+            )}
           </div>
           <button
             onClick={onNextClick}
@@ -258,7 +270,8 @@ const VariationSelectionModal: React.FC<{
   service: Service;
   onSelect: (variation: PriceVariation) => void;
   onClose: () => void;
-}> = ({ service, onSelect, onClose }) => {
+  hidePrices?: boolean;
+}> = ({ service, onSelect, onClose, hidePrices = false }) => {
   const backdropClose = useBackdropPointerClose(onClose);
 
   if (!service.price_variations || service.price_variations.length === 0) {
@@ -294,7 +307,11 @@ const VariationSelectionModal: React.FC<{
             <p className="text-gray-600 text-sm mb-6">{service.description}</p>
           )}
           <p className="text-sm font-semibold text-gray-700 mb-4">
-            {isServiceTypeVariations(service) ? 'Escolha o tipo e o valor:' : 'Escolha a duração e preço:'}
+            {hidePrices
+              ? 'Escolha a opção:'
+              : isServiceTypeVariations(service)
+                ? 'Escolha o tipo e o valor:'
+                : 'Escolha a duração e preço:'}
           </p>
           <div className="space-y-3">
             {service.price_variations.map((variation) => (
@@ -320,7 +337,7 @@ const VariationSelectionModal: React.FC<{
                       )}
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-[#5b3310] flex-shrink-0">R$ {variation.price.toFixed(2)}</span>
+                  {!hidePrices && <span className="text-lg font-bold text-[#5b3310] flex-shrink-0">R$ {variation.price.toFixed(2)}</span>}
                 </div>
               </button>
             ))}
@@ -346,7 +363,8 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
   onSelectServices,
   onNext,
   totalDuration,
-  totalPrice
+  totalPrice,
+  hidePrices = false
 }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -566,6 +584,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
                   service={serviceToDisplay}
                   isSelected={isSelected}
                   onToggle={() => toggleService(service)}
+                  hidePrices={hidePrices}
                   onEditVariation={
                     isSelected && service.price_variations && service.price_variations.length > 0
                       ? () => setVariationModalService(service)
@@ -583,6 +602,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
             totalPrice={totalPrice}
             onNext={onNext}
             onNextClick={handleNextClick}
+            hidePrices={hidePrices}
           />
         </div>
       </div>
@@ -594,6 +614,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
         onNext={onNext}
         onNextClick={handleNextClick}
         isVisible={showFixedFooter && selectedServices.length > 0}
+        hidePrices={hidePrices}
       />
 
       {/* Modal de Seleção de Variação */}
@@ -602,6 +623,7 @@ const ServiceSelector: React.FC<ServiceSelectorProps> = ({
           service={variationModalService}
           onSelect={handleVariationSelect}
           onClose={() => setVariationModalService(null)}
+          hidePrices={hidePrices}
         />
       )}
     </div>

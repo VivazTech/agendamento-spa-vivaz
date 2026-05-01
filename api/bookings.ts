@@ -217,6 +217,7 @@ export default async function handler(req: any, res: any) {
           time,
           professional_id,
           status,
+          rejection_reason,
           is_courtesy,
           booking_group_id,
           client_requests_group,
@@ -317,6 +318,7 @@ export default async function handler(req: any, res: any) {
 					professional_name: (b.professionals as { name?: string } | null)?.name ?? null,
 					status: b.status || 'pending', // Default para 'pending' se não tiver status
 					is_courtesy: Boolean((b as { is_courtesy?: unknown }).is_courtesy),
+					rejection_reason: (b as { rejection_reason?: string | null }).rejection_reason ?? null,
 					booking_group_id: b.booking_group_id ?? null,
 					client_requests_group: Boolean(b.client_requests_group),
 					payment_method_id: b.payment_method_id ?? null,
@@ -801,6 +803,7 @@ export default async function handler(req: any, res: any) {
 				booking_id?: string;
 				status?: string; // 'scheduled', 'completed', 'cancelled', etc.
 				send_whatsapp?: boolean; // Se deve enviar WhatsApp (padrão: false)
+				rejection_reason?: string | null;
 			};
 
 			const bookingId = body.booking_id;
@@ -811,6 +814,10 @@ export default async function handler(req: any, res: any) {
 			}
 			if (!status) {
 				return res.status(400).json({ ok: false, error: 'status é obrigatório' });
+			}
+			const rejectionReason = String(body.rejection_reason || '').trim();
+			if (status === 'rejected' && !rejectionReason) {
+				return res.status(400).json({ ok: false, error: 'Informe o motivo da recusa.' });
 			}
 
 			const supabaseUrl =
@@ -855,6 +862,11 @@ export default async function handler(req: any, res: any) {
 				status: status,
 				updated_at: new Date().toISOString(),
 			};
+			if (status === 'rejected') {
+				updateData.rejection_reason = rejectionReason;
+			} else if (status !== 'rejected') {
+				updateData.rejection_reason = null;
+			}
 
 			// Se o status for 'completed', adicionar timestamp de conclusão
 			if (status === 'completed') {

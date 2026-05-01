@@ -14,6 +14,7 @@ type BookingRow = {
   /** pending = solicitação; scheduled = aceito no calendário */
   status?: string;
   is_courtesy?: boolean;
+  rejection_reason?: string | null;
   professional_name?: string | null;
   client_id: string;
   client_name: string;
@@ -44,6 +45,11 @@ const ScheduleView: React.FC = () => {
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [monthSelectedDate, setMonthSelectedDate] = useState<Date | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [proposeBookingId, setProposeBookingId] = useState<string | null>(null);
+  const [proposeDate, setProposeDate] = useState('');
+  const [proposeTime, setProposeTime] = useState('');
+  const [proposeSubmitting, setProposeSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -121,6 +127,68 @@ const ScheduleView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, view, currentDate]);
 
+  const updateBookingStatus = async (bookingId: string, status: 'scheduled' | 'rejected') => {
+    let rejectionReason: string | null = null;
+    if (status === 'rejected') {
+      const reason = prompt('Informe o motivo da recusa (obrigatório):');
+      if (reason === null) return;
+      rejectionReason = reason.trim();
+      if (!rejectionReason) {
+        alert('O motivo da recusa é obrigatório.');
+        return;
+      }
+    }
+    try {
+      setUpdatingStatus(bookingId);
+      const res = await fetch('/api/bookings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: bookingId, status, rejection_reason: rejectionReason }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Erro ao atualizar status');
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao atualizar status');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const openProposeModal = (b: BookingRow) => {
+    setProposeBookingId(b.booking_id);
+    setProposeDate(b.date || '');
+    setProposeTime((b.time || '').slice(0, 5));
+  };
+
+  const submitPropose = async () => {
+    if (!proposeBookingId || !proposeDate || !proposeTime) {
+      alert('Informe data e horário para propor.');
+      return;
+    }
+    try {
+      setProposeSubmitting(true);
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'admin-propose-reschedule',
+          booking_id: proposeBookingId,
+          date: proposeDate,
+          time: proposeTime,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data?.error || 'Erro ao propor horário');
+      setProposeBookingId(null);
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Erro ao propor horário');
+    } finally {
+      setProposeSubmitting(false);
+    }
+  };
+
   const scheduleStatusBadge = (s?: string) => {
     switch (s) {
       case 'pending':
@@ -155,6 +223,38 @@ const ScheduleView: React.FC = () => {
   const monthSelectedRows = monthSelectedDate
     ? (grouped.find(([d]) => d === formatDate(monthSelectedDate))?.[1] || []).sort((a, b) => a.time.localeCompare(b.time))
     : [];
+
+  const renderPendingActions = (b: BookingRow, compact = false) => {
+    if (b.status !== 'pending') return null;
+    return (
+      <div className={`mt-3 ${compact ? 'space-y-1' : 'space-y-2'}`}>
+        <button
+          type="button"
+          onClick={() => updateBookingStatus(b.booking_id, 'scheduled')}
+          disabled={updatingStatus === b.booking_id}
+          className={`${compact ? 'w-full text-xs px-2 py-1.5' : 'w-full text-sm px-3 py-2'} rounded bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold`}
+        >
+          {updatingStatus === b.booking_id ? 'Atualizando...' : 'Aceitar'}
+        </button>
+        <button
+          type="button"
+          onClick={() => updateBookingStatus(b.booking_id, 'rejected')}
+          disabled={updatingStatus === b.booking_id}
+          className={`${compact ? 'w-full text-xs px-2 py-1.5' : 'w-full text-sm px-3 py-2'} rounded bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold`}
+        >
+          {updatingStatus === b.booking_id ? 'Atualizando...' : 'Recusar'}
+        </button>
+        <button
+          type="button"
+          onClick={() => openProposeModal(b)}
+          disabled={updatingStatus === b.booking_id}
+          className={`${compact ? 'w-full text-xs px-2 py-1.5' : 'w-full text-sm px-3 py-2'} rounded border border-[#5b3310] text-[#5b3310] hover:bg-[#f5f0eb] font-semibold`}
+        >
+          Trocar horário
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -258,6 +358,7 @@ const ScheduleView: React.FC = () => {
                     {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
                   </ul>
                 </div>
+                {renderPendingActions(b)}
               </div>
             ))}
           </div>
@@ -298,6 +399,7 @@ const ScheduleView: React.FC = () => {
                         {showAllProfessionals && b.professional_name && (
                           <div className="text-[10px] text-[#5b3310] font-medium truncate">{b.professional_name}</div>
                         )}
+                        {renderPendingActions(b, true)}
                       </li>
                     ))}
                   </ul>
@@ -338,7 +440,7 @@ const ScheduleView: React.FC = () => {
                       {day.getDate().toString().padStart(2,'0')}
                     </div>
                     <div className="mt-auto">
-                      <span className={`text-xs font-semibold ${rows.length ? 'text-[#3b200d]' : 'text-gray-500'}`}>
+                      <span className={`text-lg font-bold ${rows.length ? 'text-[#3b200d]' : 'text-gray-500'}`}>
                         {rows.length ? rows.length : '—'}
                       </span>
                     </div>
@@ -387,6 +489,7 @@ const ScheduleView: React.FC = () => {
                             {(b.services || []).map(s => (<li key={s.id}>{s.name}</li>))}
                           </ul>
                         </div>
+                        {renderPendingActions(b)}
                       </div>
                     ))}
                   </div>
@@ -394,6 +497,52 @@ const ScheduleView: React.FC = () => {
               </>
             )}
           </aside>
+        </div>
+      )}
+
+      {proposeBookingId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md bg-white rounded-2xl border border-gray-300 shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-xl font-bold text-gray-900">Propor novo horário</h4>
+              <button onClick={() => setProposeBookingId(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nova data</label>
+                <input
+                  type="date"
+                  value={proposeDate}
+                  onChange={(e) => setProposeDate(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Novo horário</label>
+                <input
+                  type="time"
+                  value={proposeTime}
+                  onChange={(e) => setProposeTime(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border border-gray-300"
+                  onClick={() => setProposeBookingId(null)}
+                >
+                  Fechar
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-[#3b200d] text-white font-semibold hover:bg-[#5b3310] disabled:opacity-60"
+                  onClick={submitPropose}
+                  disabled={proposeSubmitting}
+                >
+                  {proposeSubmitting ? 'Salvando...' : 'Salvar proposta'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

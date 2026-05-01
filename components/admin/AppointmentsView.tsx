@@ -24,6 +24,7 @@ type BookingRow = {
   professional_id: string | null;
   status?: 'pending' | 'scheduled' | 'rejected' | 'completed' | 'cancelled' | string;
   is_courtesy?: boolean;
+  rejection_reason?: string | null;
   client_id: string;
   client_name: string;
   client_phone: string;
@@ -111,7 +112,8 @@ const AppointmentsView: React.FC = () => {
 
   const updateBookingStatus = async (
     bookingId: string,
-    newStatus: 'pending' | 'scheduled' | 'rejected' | 'completed' | 'cancelled'
+    newStatus: 'pending' | 'scheduled' | 'rejected' | 'completed' | 'cancelled',
+    rejectionReason?: string
   ) => {
     setUpdatingStatus(bookingId);
     try {
@@ -122,6 +124,7 @@ const AppointmentsView: React.FC = () => {
           booking_id: bookingId,
           status: newStatus,
           send_whatsapp: false, // Não enviar WhatsApp
+          rejection_reason: newStatus === 'rejected' ? (rejectionReason || '') : null,
         }),
       });
 
@@ -136,6 +139,17 @@ const AppointmentsView: React.FC = () => {
     } finally {
       setUpdatingStatus(null);
     }
+  };
+
+  const requestRejectReasonAndReject = async (bookingId: string) => {
+    const reason = prompt('Informe o motivo da recusa (obrigatório):');
+    if (reason === null) return;
+    const normalized = reason.trim();
+    if (!normalized) {
+      alert('O motivo da recusa é obrigatório.');
+      return;
+    }
+    await updateBookingStatus(bookingId, 'rejected', normalized);
   };
 
   const submitAdminProposeReschedule = async () => {
@@ -211,7 +225,8 @@ const AppointmentsView: React.FC = () => {
       arr.push(b);
       m.set(key, arr);
     });
-    return Array.from(m.entries()).sort(([a],[b]) => a.localeCompare(b));
+    // Mais recentes primeiro: datas maiores no topo
+    return Array.from(m.entries()).sort(([a],[b]) => b.localeCompare(a));
   }, [bookings]);
 
   const statusMeta = (status?: string) => {
@@ -333,7 +348,7 @@ const AppointmentsView: React.FC = () => {
               {dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
             </h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {rows.sort((a,b) => a.time.localeCompare(b.time)).map(b => (
+              {rows.sort((a,b) => b.time.localeCompare(a.time)).map(b => (
                 <div key={b.booking_id} className="bg-white p-5 rounded-lg border border-gray-300 hover:border-[#5b3310] transition-colors duration-300">
                   <div className="flex justify-between items-start">
                     <div>
@@ -406,7 +421,7 @@ const AppointmentsView: React.FC = () => {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => updateBookingStatus(b.booking_id, 'rejected')}
+                                  onClick={() => requestRejectReasonAndReject(b.booking_id)}
                                   disabled={updatingStatus === b.booking_id || respondingToRequest === rr!.id}
                                   className="flex-1 min-w-[140px] bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold px-3 py-2 rounded text-sm"
                                 >
@@ -438,7 +453,7 @@ const AppointmentsView: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => updateBookingStatus(b.booking_id, 'rejected')}
+                                onClick={() => requestRejectReasonAndReject(b.booking_id)}
                                 disabled={updatingStatus === b.booking_id}
                                 className="flex-1 min-w-[100px] bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-3 py-2 rounded text-sm transition-colors"
                               >
