@@ -8,6 +8,7 @@ export const MOCK_SERVICES: Service[] = [
     price: 35,
     duration: 30,
     description: 'Classic men\'s haircut, tailored to your style. Includes a wash and style.',
+    category: null,
   },
   {
     id: 2,
@@ -15,6 +16,7 @@ export const MOCK_SERVICES: Service[] = [
     price: 20,
     duration: 20,
     description: 'Expert beard shaping, trimming, and line-up with a straight razor finish.',
+    category: null,
   },
   {
     id: 3,
@@ -22,6 +24,7 @@ export const MOCK_SERVICES: Service[] = [
     price: 50,
     duration: 50,
     description: 'The full package. A precision haircut and a meticulous beard trim.',
+    category: null,
   },
   {
     id: 4,
@@ -29,6 +32,7 @@ export const MOCK_SERVICES: Service[] = [
     price: 40,
     duration: 30,
     description: 'A luxurious traditional hot towel shave for the closest, smoothest finish.',
+    category: null,
   },
   {
     id: 5,
@@ -36,6 +40,7 @@ export const MOCK_SERVICES: Service[] = [
     price: 15,
     duration: 10,
     description: 'Clean up and shape your eyebrows for a polished look.',
+    category: null,
   },
   {
     id: 6,
@@ -43,6 +48,7 @@ export const MOCK_SERVICES: Service[] = [
     price: 25,
     duration: 25,
     description: 'A patient and stylish haircut for the little gentleman.',
+    category: null,
   },
 ];
 

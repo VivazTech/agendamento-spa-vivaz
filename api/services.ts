@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-type SupabaseAdmin = ReturnType<typeof createSupabaseClient>;
+type SupabaseAdmin = any;
 
 async function syncServiceProfessionals(supabase: SupabaseAdmin, serviceId: number, professionalIds: string[]) {
 	const ids = [...new Set(professionalIds.map((x) => String(x)).filter(Boolean))];

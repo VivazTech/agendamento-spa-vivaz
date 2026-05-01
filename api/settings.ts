@@ -12,7 +12,7 @@ function parseBody(raw: unknown) {
   return raw as Record<string, unknown>;
 }
 
-async function getDailyCourtesyLimit(supabase: ReturnType<typeof createSupabaseClient>) {
+async function getDailyCourtesyLimit(supabase: any) {
   const { data } = await supabase
     .from('app_settings')
     .select('value')

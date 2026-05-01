@@ -13,7 +13,7 @@ function parseBody(raw: unknown) {
 }
 
 async function syncExtraWorkerServices(
-	supabase: ReturnType<typeof createSupabaseClient>,
+	supabase: any,
 	extraWorkerId: string,
 	serviceIds: number[]
 ) {

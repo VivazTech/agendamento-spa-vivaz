@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { Client } from 'pg';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-type SupabaseServer = ReturnType<typeof createSupabaseClient>;
+type SupabaseServer = any;
 
 function professionalSetForServiceRow(r: Record<string, unknown>): Set<string> {
 	const links = (r.service_professionals as Array<{ professional_id?: string }> | null) || [];
@@ -32,12 +32,12 @@ async function upsertClientByPhone(
 	const clientEmail =
 		clientPayload.email || `whatsapp_${String(clientPayload.phone || '').replace(/\D/g, '')}@temp.local`;
 	let clientId: string | null = null;
-	const { data: existingClient } = await supabase
+	const { data: existingClient } = await (supabase as any)
 		.from('clients')
 		.select('id')
 		.eq('phone', clientPayload.phone)
 		.limit(1)
-		.single();
+		.maybeSingle();
 	if (existingClient?.id) {
 		clientId = existingClient.id as unknown as string;
 		await supabase
@@ -452,17 +452,17 @@ export default async function handler(req: any, res: any) {
 				const mustPickPay = typeof activePayModes === 'number' && activePayModes > 0;
 				if (mustPickPay) {
 					const grpPay = validateActivePaymentMethodId(supabase, gb.payment_method_id);
-					const awaited = await grpPay;
-					if (!awaited.ok) {
+			const awaited = await grpPay;
+			if (awaited.ok === false) {
 						return res.status(400).json({ ok: false, error: awaited.error });
 					}
 					if (awaited.id == null) {
 						return res.status(400).json({ ok: false, error: 'Selecione a forma de pagamento para este grupo.' });
 					}
 					adminGroupPaymentId = awaited.id;
-				} else if (gb.payment_method_id != null && gb.payment_method_id !== '') {
+				} else if (gb.payment_method_id != null) {
 					const awaited = await validateActivePaymentMethodId(supabase, gb.payment_method_id);
-					if (!awaited.ok) {
+					if (awaited.ok === false) {
 						return res.status(400).json({ ok: false, error: awaited.error });
 					}
 					adminGroupPaymentId = awaited.id;
@@ -720,16 +720,16 @@ export default async function handler(req: any, res: any) {
 			let resolvedPaymentMethodId: number | null = null;
 			if (requireClientPayment) {
 				const payCheck = await validateActivePaymentMethodId(supabase, body.payment_method_id);
-				if (!payCheck.ok) {
+				if (payCheck.ok === false) {
 					return res.status(400).json({ ok: false, error: payCheck.error });
 				}
 				if (payCheck.id == null) {
 					return res.status(400).json({ ok: false, error: 'Selecione uma forma de pagamento.' });
 				}
 				resolvedPaymentMethodId = payCheck.id;
-			} else if (body.payment_method_id != null && body.payment_method_id !== ('' as unknown)) {
+			} else if (body.payment_method_id != null) {
 				const payCheck = await validateActivePaymentMethodId(supabase, body.payment_method_id);
-				if (!payCheck.ok) {
+				if (payCheck.ok === false) {
 					return res.status(400).json({ ok: false, error: payCheck.error });
 				}
 				resolvedPaymentMethodId = payCheck.id;
