@@ -150,7 +150,7 @@ const HomeBookingFlow: React.FC<HomeBookingFlowProps> = ({ courtesy }) => {
             onNext={() => setStep('datetime')}
             totalDuration={totalDuration}
             totalPrice={totalPrice}
-            hidePrices={courtesy}
+            hidePrices={false}
           />
         );
       case 'datetime':
